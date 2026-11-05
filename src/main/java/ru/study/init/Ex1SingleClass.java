@@ -1,0 +1,31 @@
+package ru.study.init;
+
+import static ru.study.init.Log.f;
+import static ru.study.init.Log.header;
+import static ru.study.init.Log.log;
+
+/**
+ * 1. Один класс.
+ * Сначала вся статика (по порядку текста), потом instance-часть (по порядку текста).
+ * Статика выполняется один раз, instance-часть при каждом new.
+ */
+public class Ex1SingleClass {
+
+    static class A {
+        static String sf1 = f("A static field 1");
+        String if1 = f("A instance field 1");
+        static { log("A static block"); }
+        { log("A instance block"); }
+        static String sf2 = f("A static field 2");
+        String if2 = f("A instance field 2");
+
+        A() { log("A constructor"); }
+    }
+
+    public static void run() {
+        header("1. Один класс: первый new A()");
+        new A();
+        header("1. Второй new A(): статика не повторяется");
+        new A();
+    }
+}
