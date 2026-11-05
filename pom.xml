@@ -13,7 +13,7 @@
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <main.class>ru.study.init.Main</main.class>
+        <main.class>com.study.init.Main</main.class>
     </properties>
 
     <build>

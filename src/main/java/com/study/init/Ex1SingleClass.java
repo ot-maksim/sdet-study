@@ -1,8 +1,8 @@
-package ru.study.init;
+package com.study.init;
 
-import static ru.study.init.Log.f;
-import static ru.study.init.Log.header;
-import static ru.study.init.Log.log;
+import static com.study.init.Log.f;
+import static com.study.init.Log.header;
+import static com.study.init.Log.log;
 
 /**
  * 1. Один класс.

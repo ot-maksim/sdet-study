@@ -1,7 +1,7 @@
-package ru.study.init;
+package com.study.init;
 
-import static ru.study.init.Log.header;
-import static ru.study.init.Log.log;
+import static com.study.init.Log.header;
+import static com.study.init.Log.log;
 
 /**
  * 5. Static-поле читается до объявления.

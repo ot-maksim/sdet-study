@@ -1,4 +1,4 @@
-package ru.study.init;
+package com.study.init;
 
 /** Мини-утилита для вывода шагов инициализации. */
 public final class Log {
