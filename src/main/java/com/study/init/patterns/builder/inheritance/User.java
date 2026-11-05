@@ -4,7 +4,8 @@ public class User {
     private final String name;
     private final String surName;
 
-    protected User(UserBuilder<?> b) {
+    // Accepts any Builder subclass: UserBuilder, AdminBuilder, etc.
+    protected User(Builder<?> b) {
         this.name = b.name;
         this.surName = b.surName;
     }
@@ -17,8 +18,9 @@ public class User {
         return surName;
     }
 
-    public static UserBuilder<?> builder() {
-        return new UserBuilder<>();
+    // The type is now known exactly — no <?> needed
+    public static UserBuilder builder() {
+        return new UserBuilder();
     }
 
     @Override
@@ -29,14 +31,19 @@ public class User {
                 '}';
     }
 
-    public static class UserBuilder<T extends UserBuilder<T>> {
+    /**
+     * Base builder "template": shared fields and methods.
+     * Not instantiated directly (abstract) — only through subclasses,
+     * each of which passes itself as T.
+     */
+    protected abstract static class Builder<T extends Builder<T>> {
         private String name;
         private String surName;
 
-        @SuppressWarnings("unchecked")
-        protected T self() {
-            return (T) this;
-        }
+        // Each subclass returns itself — no (T) this cast needed
+        protected abstract T self();
+
+        public abstract User build();
 
         public T name(String name) {
             this.name = name;
@@ -47,7 +54,18 @@ public class User {
             this.surName = surName;
             return self();
         }
+    }
 
+    /**
+     * Concrete builder for User: T = UserBuilder.
+     */
+    public static class UserBuilder extends Builder<UserBuilder> {
+        @Override
+        protected UserBuilder self() {
+            return this;
+        }
+
+        @Override
         public User build() {
             return new User(this);
         }

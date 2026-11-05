@@ -14,15 +14,24 @@ public class Admin extends User {
         return level;
     }
 
-    public static AdminBuilder builder() {
+    // Not builder(): a static Admin.builder() would hide User.builder(),
+    // which is allowed only if AdminBuilder is a subtype of UserBuilder.
+    // Now they are siblings (both extend Builder), hence a different name.
+    public static AdminBuilder adminBuilder() {
         return new AdminBuilder();
     }
 
-    public static class AdminBuilder extends UserBuilder<AdminBuilder> {
+    /** Concrete builder for Admin: T = AdminBuilder. */
+    public static class AdminBuilder extends User.Builder<AdminBuilder> {
         private int level;
 
         public AdminBuilder level(int level) {
             this.level = level;
+            return this;
+        }
+
+        @Override
+        protected AdminBuilder self() {
             return this;
         }
 

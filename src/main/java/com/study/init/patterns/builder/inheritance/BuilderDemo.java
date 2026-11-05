@@ -5,8 +5,8 @@ public class BuilderDemo {
         User user = User.builder().name("bob").surName("old").build();
         System.out.println("user: " + user);
 
-        // .name() вернул Admin.Builder, поэтому .level() доступен
-        Admin admin = Admin.builder().name("tom").surName("very old").level(5).build();
+        // .name() returned AdminBuilder (T = AdminBuilder), so .level() is available
+        Admin admin = Admin.adminBuilder().name("tom").surName("very old").level(5).build();
         System.out.println("admin: " + admin);
 
 //        User.builder().
