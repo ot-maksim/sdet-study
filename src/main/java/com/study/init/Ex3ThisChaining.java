@@ -4,9 +4,9 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 3. Цепочка this(...).
- * Инициализаторы полей и блоки выполняются один раз: в том конструкторе цепочки,
- * который вызывает super(). Конструктор с this(...) их не запускает.
+ * 3. this(...) chaining.
+ * Field initializers and instance blocks run once: in the constructor of the chain
+ * that calls super(). A constructor that calls this(...) does not run them.
  */
 public class Ex3ThisChaining {
 
@@ -24,7 +24,7 @@ public class Ex3ThisChaining {
     }
 
     public static void run() {
-        header("3. this(...) цепочка: new T()");
+        header("3. this(...) chaining: new T()");
         new T();
     }
 }

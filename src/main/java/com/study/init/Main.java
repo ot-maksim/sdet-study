@@ -1,6 +1,6 @@
 package com.study.init;
 
-/** Запускает все примеры по порядку. */
+/** Runs all examples in order. */
 public class Main {
     public static void main(String[] args) {
 //        Ex1SingleClass.run();

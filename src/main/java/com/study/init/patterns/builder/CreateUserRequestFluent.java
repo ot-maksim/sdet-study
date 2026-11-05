@@ -1,10 +1,10 @@
 package com.study.init.patterns.builder;
 /*
-Билдер с изменяемым результатом
-Объект — обычный класс с сеттерами (часто DTO для сериализации в JSON), билдер — просто удобный способ его заполнить.
+Builder with a mutable result
+The object is a plain class with setters (often a DTO for JSON serialization); the builder is just a convenient way to fill it.
 
-Вариант без отдельного билдера — fluent-сеттеры, которые возвращают this. Формально это не билдер,
-но решает ту же задачу для изменяемых объектов:
+A variant without a separate builder: fluent setters that return this. Formally it is not a builder,
+but it solves the same problem for mutable objects:
 public CreateUserRequest withName(String name) { this.name = name; return this; }
  */
 
@@ -13,7 +13,7 @@ public class CreateUserRequestFluent {
     private String email;
 
     public CreateUserRequestFluent() {
-    }            // нужен Jackson
+    }            // required by Jackson
 
     public String getName() {
         return name;

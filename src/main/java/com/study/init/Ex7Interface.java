@@ -5,9 +5,9 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 7. Интерфейсы.
- * Реализация интерфейса не инициализирует его. Исключение: интерфейс с default-методами
- * инициализируется вместе с классом-реализацией.
+ * 7. Interfaces.
+ * Implementing an interface does not initialize it. Exception: an interface with default methods
+ * is initialized together with the implementing class.
  */
 public class Ex7Interface {
 
@@ -20,9 +20,9 @@ public class Ex7Interface {
     }
 
     public static void run() {
-        header("7. Интерфейс не инициализируется вместе с классом");
+        header("7. Interface is not initialized together with the class");
         new Impl();
-        log("читаем I.X...");
+        log("reading I.X...");
         log("I.X = " + I.X);
     }
 }

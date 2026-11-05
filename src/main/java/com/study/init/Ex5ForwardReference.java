@@ -4,9 +4,9 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 5. Static-поле читается до объявления.
- * Поля заполняются по порядку текста. Когда вычисляется a, поле b ещё равно 0.
- * Прямое "a = b + 1" компилятор запретит, а через метод проходит.
+ * 5. A static field is read before its declaration.
+ * Fields are initialized in textual order. When a is computed, b is still 0.
+ * A direct "a = b + 1" is rejected by the compiler, but going through a method works.
  */
 public class Ex5ForwardReference {
 
@@ -18,7 +18,7 @@ public class Ex5ForwardReference {
     }
 
     public static void run() {
-        header("5. Static-поле читается до объявления");
+        header("5. Static field read before its declaration");
         log("F.a = " + F.a + ", F.b = " + F.b);
     }
 }

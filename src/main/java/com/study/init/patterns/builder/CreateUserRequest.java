@@ -1,17 +1,17 @@
 package com.study.init.patterns.builder;
 /*
-Билдер с изменяемым результатом
-Объект — обычный класс с сеттерами (часто DTO для сериализации в JSON), билдер — просто удобный способ его заполнить.
+Builder with a mutable result
+The object is a plain class with setters (often a DTO for JSON serialization); the builder is just a convenient way to fill it.
 
-Здесь билдер не дает гарантий, только читаемость. Это ровно то, что генерирует Lombok при @Data + @Builder.
-Для тестов API это нормально: в негативных кейсах иногда как раз нужно собрать «сломанный» запрос.
+Here the builder gives no guarantees, only readability. This is exactly what Lombok generates for @Data + @Builder.
+For API tests this is fine: negative cases sometimes need exactly a "broken" request.
  */
 
 public class CreateUserRequest {
     private String name;
     private String email;
 
-    public CreateUserRequest() {}            // нужен Jackson
+    public CreateUserRequest() {}            // required by Jackson
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }

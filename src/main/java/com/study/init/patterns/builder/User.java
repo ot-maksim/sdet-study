@@ -7,36 +7,36 @@ import java.util.Objects;
 import static java.util.Arrays.asList;
 
 /*
-Билдер Блоха с неизменяемым результатом
-Это тот, что был выше. Чуть доработаю: обязательные поля, валидация и защитная копия коллекции.
-Что делает объект неизменяемым: final-поля, приватный конструктор, нет сеттеров, List.copyOf вместо ссылки на изменяемый список.
-Без последнего пункта объект неизменяемый только формально: снаружи можно было бы поменять список.
+Bloch's builder with an immutable result
+Same as above, slightly improved: required fields, validation and a defensive copy of the collection.
+What makes the object immutable: final fields, a private constructor, no setters, List.copyOf instead of a reference to a mutable list.
+Without the last point the object is immutable only formally: the list could be changed from outside.
 
-toBuilder() очень полезен в тестовых данных: берёшь «валидного пользователя по умолчанию» и меняешь одно поле для негативного кейса.
+toBuilder() is very useful for test data: take a "valid default user" and change one field for a negative case.
  */
 
 public final class User {
-    private final String name;          // обязательное
-    private final String email;         // обязательное
-    private final int age;              // необязательное
-    private final List<String> roles;   // необязательное
+    private final String name;          // required
+    private final String email;         // required
+    private final int age;              // optional
+    private final List<String> roles;   // optional
 
     private User(Builder b) {
         this.name = b.name;
         this.email = b.email;
         this.age = b.age;
-        this.roles = List.copyOf(b.roles);   // неизменяемая копия
+        this.roles = List.copyOf(b.roles);   // immutable copy
     }
 
     public static Builder builder(String name, String email) {
         return new Builder(name, email);
     }
 
-    public Builder toBuilder() {             // копия с изменениями
+    public Builder toBuilder() {             // copy with changes
         return new Builder(name, email).age(age).roles(roles);
     }
 
-    // только геттеры, сеттеров нет
+    // getters only, no setters
     public String getName() {
         return name;
     }

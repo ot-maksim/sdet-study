@@ -5,10 +5,10 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 2. Наследование + виртуальный вызов из конструктора родителя.
- * Порядок: static родителя, static потомка, instance родителя + конструктор родителя,
- * instance потомка + конструктор потомка.
- * Ловушка: P() вызывает hook(), а это C.hook(), и поле name в этот момент ещё null.
+ * 2. Inheritance + a virtual call from the parent constructor.
+ * Order: parent static, child static, parent instance + parent constructor,
+ * child instance + child constructor.
+ * Pitfall: P() calls hook(), which is C.hook(), and the name field is still null at that moment.
  */
 public class Ex2Inheritance {
 
@@ -19,7 +19,7 @@ public class Ex2Inheritance {
 
         P() {
             log("P constructor");
-            hook(); // виртуальный вызов
+            hook(); // virtual call
         }
 
         void hook() { log("P.hook"); }
@@ -40,7 +40,7 @@ public class Ex2Inheritance {
     }
 
     public static void run() {
-        header("2. Наследование: new C()");
+        header("2. Inheritance: new C()");
         new C();
     }
 }

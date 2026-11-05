@@ -5,9 +5,9 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 1. Один класс.
- * Сначала вся статика (по порядку текста), потом instance-часть (по порядку текста).
- * Статика выполняется один раз, instance-часть при каждом new.
+ * 1. A single class.
+ * First all static parts (in textual order), then the instance part (in textual order).
+ * Static parts run once, the instance part runs on every new.
  */
 public class Ex1SingleClass {
 
@@ -23,9 +23,9 @@ public class Ex1SingleClass {
     }
 
     public static void run() {
-        header("1. Один класс: первый new A()");
+        header("1. Single class: first new A()");
         new A();
-        header("1. Второй new A(): статика не повторяется");
+        header("1. Second new A(): static parts do not run again");
         new A();
     }
 }

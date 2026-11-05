@@ -4,8 +4,8 @@ import static com.study.init.Log.header;
 import static com.study.init.Log.log;
 
 /**
- * 6. Статика родителя через потомка.
- * C2.X компилируется в P2.X, поэтому инициализируется только P2.
+ * 6. Parent static field accessed via the child.
+ * C2.X compiles to P2.X, so only P2 is initialized.
  */
 public class Ex6ParentStaticViaChild {
 
@@ -19,9 +19,9 @@ public class Ex6ParentStaticViaChild {
     }
 
     public static void run() {
-        header("6. Статика родителя через потомка: C2.X");
+        header("6. Parent static via child: C2.X");
         log("C2.X = " + C2.X);
-        log("теперь new C2()");
+        log("now new C2()");
         new C2();
     }
 }

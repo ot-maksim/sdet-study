@@ -1,6 +1,6 @@
 package com.study.init;
 
-/** Мини-утилита для вывода шагов инициализации. */
+/** Tiny utility for printing initialization steps. */
 public final class Log {
     private Log() {}
 
@@ -8,7 +8,7 @@ public final class Log {
         System.out.println("  " + s);
     }
 
-    /** Печатает сообщение и возвращает его же: удобно для инициализаторов полей. */
+    /** Prints the message and returns it: handy for field initializers. */
     public static String f(String s) {
         log(s);
         return s;
