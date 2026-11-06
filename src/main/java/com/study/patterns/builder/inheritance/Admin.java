@@ -1,4 +1,4 @@
-package com.study.init.patterns.builder.inheritance;
+package com.study.patterns.builder.inheritance;
 
 import static java.lang.String.format;
 

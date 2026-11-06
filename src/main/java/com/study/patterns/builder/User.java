@@ -1,4 +1,4 @@
-package com.study.init.patterns.builder;
+package com.study.patterns.builder;
 
 import java.util.ArrayList;
 import java.util.List;

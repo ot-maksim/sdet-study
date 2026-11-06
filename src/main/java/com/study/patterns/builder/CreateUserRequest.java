@@ -1,4 +1,4 @@
-package com.study.init.patterns.builder;
+package com.study.patterns.builder;
 /*
 Builder with a mutable result
 The object is a plain class with setters (often a DTO for JSON serialization); the builder is just a convenient way to fill it.

@@ -1,4 +1,4 @@
-package com.study.init.patterns.builder.inheritance;
+package com.study.patterns.builder.inheritance;
 
 public class User {
     private final String name;

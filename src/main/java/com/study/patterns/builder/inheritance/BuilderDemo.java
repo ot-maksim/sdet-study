@@ -1,4 +1,4 @@
-package com.study.init.patterns.builder.inheritance;
+package com.study.patterns.builder.inheritance;
 
 public class BuilderDemo {
     public static void main(String[] args) {
