@@ -53,6 +53,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [ ] Coupling + DI — page object с `new Browser()` vs внедрение; DIP / IoC / DI
 - [ ] Закон Деметры — цепочки навигации vs намеренные действия; когда fluent API — не нарушение
 - [ ] Наследование vs композиция — `BaseTest`-god-class, взрыв иерархии страниц vs компоненты/extensions
+  - [x] Абстрактный класс как владелец состояния с инвариантом: жизненный цикл сессии драйвера (`inheritance.session`: bad / good / composition)
 - [ ] SRP — page object «всё в одном» → разделение по причинам изменения
 - [ ] OCP — `switch(browser/env)` → Strategy/registry
 - [ ] LSP — `ReadOnlyDbClient extends DbClient` → корректная иерархия
