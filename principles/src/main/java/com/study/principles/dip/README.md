@@ -10,9 +10,9 @@
 
 Run:
 ```
-mvn -q compile exec:java -Dmain.class=com.study.principles.dip.bad.OrderTest
-mvn -q compile exec:java -Dmain.class=com.study.principles.dip.good.DipDemo
-mvn -q compile exec:java -Dmain.class=com.study.principles.dip.good.DipDemo -Dpreconditions=api
+mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.dip.bad.OrderTest
+mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.dip.good.DipDemo
+mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.dip.good.DipDemo -Dpreconditions=api
 ```
 
 ## Try it yourself

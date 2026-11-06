@@ -4,30 +4,56 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ru.study</groupId>
-    <artifactId>java-init-order</artifactId>
+    <groupId>com.study</groupId>
+    <artifactId>sdet-study</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>java-init-order</name>
-    <description>Примеры порядка инициализации классов и объектов в Java</description>
+    <packaging>pom</packaging>
+    <name>sdet-study</name>
+    <description>OOP and software architecture in practice: principles katas and a learning test framework skeleton</description>
+
+    <!-- Modules are added as the plan progresses (principles, sut, framework) -->
+    <modules>
+        <module>basics</module>
+        <module>principles</module>
+    </modules>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <main.class>com.study.init.Main</main.class>
+
+        <junit.version>5.14.4</junit.version>
+        <assertj.version>3.27.7</assertj.version>
+        <jqwik.version>1.9.1</jqwik.version>
+
+        <surefire.version>3.5.6</surefire.version>
+        <exec-plugin.version>3.5.0</exec-plugin.version>
     </properties>
 
+    <!-- Versions are declared once here; modules reference dependencies without versions -->
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.11.3</version>
+                <version>${junit.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+            <!-- Property-based testing: runs on the JUnit Platform as its own engine -->
+            <dependency>
+                <groupId>net.jqwik</groupId>
+                <artifactId>jqwik</artifactId>
+                <version>${jqwik.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
 
+    <!-- Test stack shared by every module -->
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -37,33 +63,28 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.26.3</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- Property-based testing: runs on the JUnit Platform as its own engine -->
-        <dependency>
-            <groupId>net.jqwik</groupId>
-            <artifactId>jqwik</artifactId>
-            <version>1.9.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <mainClass>${main.class}</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${exec-plugin.version}</version>
+                    <configuration>
+                        <!-- Each module sets a default main.class; override with -Dmain.class=... -->
+                        <mainClass>${main.class}</mainClass>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>
