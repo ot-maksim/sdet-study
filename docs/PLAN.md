@@ -61,7 +61,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 Шаблон катала: README (суть, плюсы/минусы, когда НЕ применять) → `bad` → `good` →
 тест, показывающий разницу → упражнение «попробуй сам». Без внешних систем, на fakes.
 
-- [x] Инварианты класса (`principles/invariants`: hashkey, leak, record, testrun + property-based тесты)
+- [x] Инварианты класса (`principles/invariants`: hashkey, leak, record, testrun, retry + property-based тесты)
 - [ ] Инкапсуляция / абстракция — мутабельный `TestConfig` vs неизменяемый с инвариантами
 - [ ] Deep vs Shallow — `HttpHelper` vs `UserApi.create(user)`; temporal coupling
 - [ ] Coupling + DI — page object с `new Browser()` vs внедрение; DIP / IoC / DI

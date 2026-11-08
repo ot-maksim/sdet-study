@@ -43,6 +43,7 @@ The object itself is the guardian of its invariants. It must:
 | [`hashkey`](hashkey/README.md) | a mutable object used as a `HashMap` key |
 | [`record`](record/README.md) | `record`: compact constructor and the "shallow immutability" trap |
 | [`testrun`](testrun/README.md) | setters for every field vs domain operations; why a well encapsulated object is easy to test |
+| [`retry`](retry/README.md) | immutable value object: invariants checked once in the constructor, trusted by every client |
 
 Each sub-package has a `*Demo` class with `main()` and matching unit tests under `src/test/java`.
 
@@ -52,5 +53,6 @@ mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.invari
 mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.invariants.hashkey.HashKeyDemo
 mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.invariants.record.RecordDemo
 mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.invariants.testrun.TestRunDemo
+mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.invariants.retry.RetryDemo
 mvn -q -pl principles test -Dtest='com.study.principles.invariants.**.*Test'
 ```
