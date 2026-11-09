@@ -64,6 +64,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] Инварианты класса (`principles/invariants`: hashkey, leak, record, testrun, retry + property-based тесты)
 - [x] Инкапсуляция / абстракция — мутабельный `TestConfig` vs неизменяемый с инвариантами — `principles/encapsulation`
 - [x] Records в автоматизации — где подходит (DTO, тест-данные), ловушки (`toString`, массивы), где нет (клиенты, page objects) — `principles/records`
+- [x] Даты и время в тестах — внедрённый `Clock` vs `now()`, выбор типа (`Instant`/`LocalDate`/`ZonedDateTime`/`Duration` vs `Period`, DST), ловушки форматов (`YYYY`, `hh`, `SimpleDateFormat`), проверка серверных timestamp'ов (окно, допуск, точность) — `principles/time`
 - [ ] Deep vs Shallow — `HttpHelper` vs `UserApi.create(user)`; temporal coupling
 - [ ] Coupling + DI — page object с `new Browser()` vs внедрение; DIP / IoC / DI
 - [ ] Закон Деметры — цепочки навигации vs намеренные действия; когда fluent API — не нарушение
