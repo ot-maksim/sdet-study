@@ -24,6 +24,9 @@
         <junit.version>5.14.4</junit.version>
         <assertj.version>3.27.7</assertj.version>
         <jqwik.version>1.9.1</jqwik.version>
+        <rest-assured.version>5.5.0</rest-assured.version>
+        <testng.version>7.11.0</testng.version>
+        <testng-engine.version>1.0.6</testng-engine.version>
 
         <surefire.version>3.5.6</surefire.version>
         <exec-plugin.version>3.5.0</exec-plugin.version>
@@ -49,6 +52,24 @@
                 <groupId>net.jqwik</groupId>
                 <artifactId>jqwik</artifactId>
                 <version>${jqwik.version}</version>
+            </dependency>
+            <!-- API client; in principles it never touches the network (a Filter plays the server) -->
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
+            </dependency>
+            <!-- TestNG, for the JUnit-vs-TestNG comparison in the parallel kata -->
+            <dependency>
+                <groupId>org.testng</groupId>
+                <artifactId>testng</artifactId>
+                <version>${testng.version}</version>
+            </dependency>
+            <!-- Runs TestNG classes on the JUnit Platform, next to Jupiter and jqwik, in one Surefire run -->
+            <dependency>
+                <groupId>org.junit.support</groupId>
+                <artifactId>testng-engine</artifactId>
+                <version>${testng-engine.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

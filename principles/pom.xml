@@ -20,9 +20,34 @@
     </properties>
 
     <dependencies>
+        <!-- parallel kata: framework-side code (base test class, extension) is main code, as in framework/ later -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+        </dependency>
+        <!-- parallel kata, TestNG side: its base class is main code, like the JUnit one -->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+        </dependency>
         <dependency>
             <groupId>net.jqwik</groupId>
             <artifactId>jqwik</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Runs small JUnit test classes from a test and asserts on their events (parallel kata: extension scopes) -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-testkit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

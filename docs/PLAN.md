@@ -65,6 +65,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] Инкапсуляция / абстракция — мутабельный `TestConfig` vs неизменяемый с инвариантами — `principles/encapsulation`
 - [x] Records в автоматизации — где подходит (DTO, тест-данные), ловушки (`toString`, массивы), где нет (клиенты, page objects) — `principles/records`
 - [x] Даты и время в тестах — внедрённый `Clock` vs `now()`, выбор типа (`Instant`/`LocalDate`/`ZonedDateTime`/`Duration` vs `Period`, DST), ловушки форматов (`YYYY`, `hh`, `SimpleDateFormat`), проверка серверных timestamp'ов (окно, допуск, точность) — `principles/time`
+- [x] Параллельный запуск и общее состояние — общий `RequestSpecification` / `static WebDriver` vs неизменяемый клиент + драйвер на тест; что делить и какой структурой (Store compute-once, `AtomicLong`, `ConcurrentLinkedQueue`, `BlockingQueue`-пул, `@ResourceLock`, изоляция данными); каталог из 9 механизмов дизайна; единица параллелизации (JUnit / TestNG / Cucumber); JUnit 5 vs TestNG в коде (экземпляр на класс, `ITestResult`-скоуп, `timeOut`-поток, `@Factory`, свой лок через `IHookable`); ловушки `ThreadLocal` — `principles/parallel`
 - [ ] Deep vs Shallow — `HttpHelper` vs `UserApi.create(user)`; temporal coupling
 - [ ] Coupling + DI — page object с `new Browser()` vs внедрение; DIP / IoC / DI
 - [ ] Закон Деметры — цепочки навигации vs намеренные действия; когда fluent API — не нарушение
