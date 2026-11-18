@@ -82,7 +82,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
   - [x] Абстрактный класс как владелец состояния с инвариантом: жизненный цикл сессии драйвера (`inheritance.session`: bad / good / composition)
   - [x] `basetest` — `BaseTest`-god-class (API-тест платит за браузер и БД, свой `@BeforeEach setUp()` молча заменяет базовый → NPE, `UiDbBaseTest` копирует половину `DbBaseTest`) vs JUnit 5 extensions по ресурсу + мета-аннотации `@ApiTest`/`@UiTest`/`@DbTest`, кооперация `ScreenshotOnFailure` ↔ `BrowserExtension` без наследования, test interfaces как миксины без состояния
   - [x] `pages` — дерево `PageWithSidebarAndSearch` (refused bequest `SettingsPage.navigateTo()`, `Mobile*Page` на каждый лист, забытый `MobileReportsPage`) vs компоненты `Header`/`Sidebar`/`SearchBox` и одно решение про устройство в `Pages`
-- [ ] SRP — page object «всё в одном» → разделение по причинам изменения
+- [x] SRP — `CheckoutPage` «всё в одном» (селекторы + API-подготовка + приватная копия правила цены + проверка в БД + отчёт в stdout с картой в открытом виде + тестовые данные): после редизайна разметки падает и API+DB-тест → класс на причину изменения (`CheckoutPage`, `CartPrecondition`, оракул `ExpectedPrice` с jqwik против API, `Orders`, `ReportingBrowser`-декоратор с маскированием, `Cards`); перегиб — нарезка по техническим ролям (locators/waits/actions/verifications), SRP vs cohesion — `principles/srp`
 - [ ] OCP — `switch(browser/env)` → Strategy/registry
 - [ ] LSP — `ReadOnlyDbClient extends DbClient` → корректная иерархия
 - [ ] ISP — толстый `Driver` → ролевые интерфейсы
