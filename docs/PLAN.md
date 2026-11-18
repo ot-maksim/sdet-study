@@ -70,7 +70,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
   - [x] а. Перенос `async` → `concurrency/events/kafka`, общее ядро `events` (`EventWaiter`, `SwitchableListener`)
   - [x] б. `events/websocket` — push без replay на JDK `WebSocket`: готовность = ack сервера, demand (`request(1)`), фрагменты (`last`), потеря соединения как быстрая ошибка с причиной (pill в очереди), reconnect-разрыв → проверка состояния через API (фейк-сервер)
   - [x] в. `events/webhook` — тест как сервер на JDK `HttpServer`: порт 0 и адрес, достижимый для SUT; запись → мгновенный 2xx → проверки в потоке теста; ассерт в хэндлере теряется; at-least-once: события vs доставки, `respondNext` для проверки retry-политики SUT; HMAC по сырому телу
-  - [ ] г. `events/ui` — «run and wait» (форма API Playwright), транзиентный toast против поллинга
+  - [x] г. `events/ui` — фейковая страница в форме API Playwright: обработчик диалога до клика (auto-dismiss), «run and wait» (`waitForResponse(predicate, action)`) против ожидания после скриншота шага, снапшоты vs web-first ассерты, транзиентный toast: поллинг 500 мс vs ассерт сразу vs `page.clock()`
   - [ ] д. `race` — гонки в SUT: latch-ворота, двойное списание, idempotency key, lost update
   - [ ] е. `eventual` — eventual consistency: `sleep` vs самописный поллинг vs Awaitility
   - [ ] ж. `fanout` + `futures` — параллельная подготовка данных; SUT, возвращающий `CompletableFuture`; потеря MDC/`ThreadLocal`, утечка потоков
