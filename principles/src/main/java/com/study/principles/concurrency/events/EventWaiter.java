@@ -1,4 +1,4 @@
-package com.study.principles.async.good;
+package com.study.principles.concurrency.events;
 
 import java.time.Duration;
 import java.util.Optional;

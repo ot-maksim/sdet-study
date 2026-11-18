@@ -1,11 +1,11 @@
-package com.study.principles.async.bad;
+package com.study.principles.concurrency.events.kafka.bad;
 
-import com.study.principles.async.Await;
-import com.study.principles.async.Event;
-import com.study.principles.async.FakeBroker;
-import com.study.principles.async.FakeOrderService;
-import com.study.principles.async.ReportFile;
-import com.study.principles.async.good.EventWaiter;
+import com.study.principles.concurrency.Await;
+import com.study.principles.concurrency.ReportFile;
+import com.study.principles.concurrency.events.EventWaiter;
+import com.study.principles.concurrency.events.kafka.Event;
+import com.study.principles.concurrency.events.kafka.FakeBroker;
+import com.study.principles.concurrency.events.kafka.FakeOrderService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * test-side (how the test collects, waits, unsubscribes) on top of the good {@code EventClient},
  * and client-side, in {@link EventClient} and {@link VolatileSwitchableListener} of this package.
  */
-class BadAsyncEventsTest {
+class BadKafkaEventsTest {
 
     private static final Duration SHORT = Duration.ofMillis(500);
 
@@ -58,8 +58,8 @@ class BadAsyncEventsTest {
         int rounds = 0;
         boolean lost = false;
         while (!lost && rounds++ < 20) {
-            var orders = closeLater(new com.study.principles.async.good.EventClient(broker));
-            var payments = closeLater(new com.study.principles.async.good.EventClient(broker));
+            var orders = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
+            var payments = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
             List<Event> received = new ArrayList<>();
             AtomicInteger delivered = new AtomicInteger();
             AtomicInteger threw = new AtomicInteger();
@@ -89,7 +89,7 @@ class BadAsyncEventsTest {
 
     @Test
     void assertingRightAfterTheAction_seesNothingYet() {
-        var client = closeLater(new com.study.principles.async.good.EventClient(broker));
+        var client = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
         var orders = closeLater(new FakeOrderService(broker, Duration.ofMillis(300)));
         List<Event> received = new CopyOnWriteArrayList<>();
         client.subscribe("orders", received::add);
@@ -101,7 +101,7 @@ class BadAsyncEventsTest {
 
     @Test
     void fixedSleep_shorterThanThisRunsLatency_missesTheEvent() throws InterruptedException {
-        var client = closeLater(new com.study.principles.async.good.EventClient(broker));
+        var client = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
         var orders = closeLater(new FakeOrderService(broker, Duration.ofMillis(500)));
         List<Event> received = new CopyOnWriteArrayList<>();
         client.subscribe("orders", received::add);
@@ -114,7 +114,7 @@ class BadAsyncEventsTest {
 
     @Test
     void pollTakesTheFirstEvent_whichIsAnotherTestsOrder() throws InterruptedException {
-        var client = closeLater(new com.study.principles.async.good.EventClient(broker));
+        var client = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
         var orders = closeLater(new FakeOrderService(broker, Duration.ofMillis(50)));
         BlockingQueue<Event> received = new LinkedBlockingQueue<>();
         client.subscribe("orders", received::add);
@@ -132,7 +132,7 @@ class BadAsyncEventsTest {
 
     @Test
     void unsubscribeWithMethodReference_removesNothing() throws InterruptedException {
-        var client = closeLater(new com.study.principles.async.good.EventClient(broker));
+        var client = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
         BlockingQueue<Event> received = new LinkedBlockingQueue<>();
 
         client.subscribe("orders", received::add);
@@ -149,7 +149,7 @@ class BadAsyncEventsTest {
      */
     @Test
     void plainUnsubscribeThenRelease_listenerStillCalledFromTheDispatchInProgress() {
-        var client = closeLater(new com.study.principles.async.good.EventClient(broker));
+        var client = closeLater(new com.study.principles.concurrency.events.kafka.good.EventClient(broker));
         ReportFile report = new ReportFile();
         CountDownLatch dispatching = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
@@ -222,7 +222,7 @@ class BadAsyncEventsTest {
         BlockingQueue<Event> received = new LinkedBlockingQueue<>();
         client.subscribe("orders", e -> parseOrder(e.value()));   // somebody's strict parser
         client.subscribe("orders", received::add);
-        Await.untilPositioned(broker, "orders", received);
+        untilPositioned(broker, "orders", received);
 
         broker.publish("orders", "garbage", "not json");          // one malformed message in a shared topic
         broker.publish("orders", "order-1", "{\"orderId\":\"order-1\"}");
@@ -240,7 +240,7 @@ class BadAsyncEventsTest {
         var client = closeLater(new EventClient(broker));
         BlockingQueue<Event> received = new LinkedBlockingQueue<>();
         client.subscribe("orders", received::add);
-        Await.untilPositioned(broker, "orders", received);
+        untilPositioned(broker, "orders", received);
         client.subscribe("orders", new Consumer<>() {   // "wait for the first OrderCreated, then stop listening"
             @Override
             public void accept(Event e) {
@@ -253,6 +253,27 @@ class BadAsyncEventsTest {
 
         assertThat(EventWaiter.pollMatching(received, e -> e.key().equals("order-1"), Duration.ofSeconds(2))).isPresent();
         assertThat(EventWaiter.pollMatching(received, e -> e.key().equals("order-2"), SHORT)).isEmpty();
+    }
+
+    /**
+     * For the bad client only, whose {@code subscribe} returns before reading starts: publish pings until one
+     * comes back, so the test knows the client is positioned. The good client never needs this.
+     */
+    private static void untilPositioned(FakeBroker broker, String topic, BlockingQueue<Event> received) {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        try {
+            while (System.nanoTime() < deadline) {
+                broker.publish(topic, "ping", "{}");
+                if (received.poll(20, TimeUnit.MILLISECONDS) != null) {
+                    received.clear();
+                    return;
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+        throw new AssertionError("Client never started reading " + topic);
     }
 
     static void parseOrder(String json) {

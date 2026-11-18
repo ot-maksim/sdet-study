@@ -1,4 +1,4 @@
-package com.study.principles.async;
+package com.study.principles.concurrency.events.kafka;
 
 import java.time.Clock;
 import java.util.ArrayList;

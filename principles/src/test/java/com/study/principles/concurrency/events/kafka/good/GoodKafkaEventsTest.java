@@ -1,10 +1,12 @@
-package com.study.principles.async.good;
+package com.study.principles.concurrency.events.kafka.good;
 
-import com.study.principles.async.Await;
-import com.study.principles.async.Event;
-import com.study.principles.async.FakeBroker;
-import com.study.principles.async.FakeOrderService;
-import com.study.principles.async.ReportFile;
+import com.study.principles.concurrency.Await;
+import com.study.principles.concurrency.ReportFile;
+import com.study.principles.concurrency.events.EventWaiter;
+import com.study.principles.concurrency.events.SwitchableListener;
+import com.study.principles.concurrency.events.kafka.Event;
+import com.study.principles.concurrency.events.kafka.FakeBroker;
+import com.study.principles.concurrency.events.kafka.FakeOrderService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,8 +25,8 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** The scenarios of {@code bad.BadAsyncEventsTest}, done right, plus the guarantees of {@link EventClient}. */
-class GoodAsyncEventsTest {
+/** The scenarios of {@code bad.BadKafkaEventsTest}, done right, plus the guarantees of {@link EventClient}. */
+class GoodKafkaEventsTest {
 
     private static final Duration WAIT = Duration.ofSeconds(2);
     private static final Duration SHORT = Duration.ofMillis(300);

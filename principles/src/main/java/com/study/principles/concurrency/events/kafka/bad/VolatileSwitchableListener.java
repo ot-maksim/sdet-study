@@ -1,4 +1,4 @@
-package com.study.principles.async.bad;
+package com.study.principles.concurrency.events.kafka.bad;
 
 import java.util.function.Consumer;
 
@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  * </pre>
  *
  * {@code deactivate()} returns while the delegate is still running (or about to run), so "switched off"
- * does not mean "safe to release resources". See {@code good.SwitchableListener}.
+ * does not mean "safe to release resources". See {@code events.SwitchableListener}.
  */
 public final class VolatileSwitchableListener<T> implements Consumer<T> {
 

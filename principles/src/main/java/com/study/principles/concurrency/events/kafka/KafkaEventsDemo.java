@@ -1,8 +1,8 @@
-package com.study.principles.async;
+package com.study.principles.concurrency.events.kafka;
 
-import com.study.principles.async.good.EventClient;
-import com.study.principles.async.good.EventSubscription;
-import com.study.principles.async.good.EventWaiter;
+import com.study.principles.concurrency.events.EventWaiter;
+import com.study.principles.concurrency.events.kafka.good.EventClient;
+import com.study.principles.concurrency.events.kafka.good.EventSubscription;
 
 import java.time.Duration;
 import java.util.List;
@@ -18,10 +18,10 @@ import java.util.concurrent.TimeUnit;
  * and run 30 times each. The SUT publishes after 20–300 ms; parallel tests create orders in the same topic.
  *
  * <pre>
- * mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.async.AsyncDemo
+ * mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.concurrency.events.kafka.KafkaEventsDemo
  * </pre>
  */
-public final class AsyncDemo {
+public final class KafkaEventsDemo {
 
     private static final int RUNS = 30;
 

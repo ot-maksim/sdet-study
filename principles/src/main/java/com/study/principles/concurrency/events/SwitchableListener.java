@@ -1,4 +1,4 @@
-package com.study.principles.async.good;
+package com.study.principles.concurrency.events;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -13,7 +13,7 @@ import java.util.function.Consumer;
  *
  * <p>{@code accept} and {@code deactivate} synchronize on the same monitor, so {@code deactivate} waits for
  * a running {@code accept} to finish. A {@code volatile} flag alone does not do that: the check and the
- * call are two steps, and {@code deactivate} can slip in between them (see {@code bad.VolatileSwitchableListener}).
+ * call are two steps, and {@code deactivate} can slip in between them (see {@code events.kafka.bad.VolatileSwitchableListener}).
  * The cost: a slow delegate blocks {@code deactivate}. Fine for tests; think twice in production code.
  */
 public final class SwitchableListener<T> implements Consumer<T> {

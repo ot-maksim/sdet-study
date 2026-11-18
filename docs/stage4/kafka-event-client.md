@@ -2,8 +2,8 @@
 
 Deferred from stage 1. The thread-safety part of the design (listener on a foreign thread, `BlockingQueue`,
 `pollMatching`, `CopyOnWriteArrayList` registry, `SwitchableListener`, `EventSubscription`, close order) is
-taught on a fake broker in the `principles/async` kata
-([README](../../principles/src/main/java/com/study/principles/async/README.md)). This note keeps the
+taught on a fake broker in the `principles/concurrency/events/kafka` kata
+([README](../../principles/src/main/java/com/study/principles/concurrency/events/kafka/README.md)). This note keeps the
 Kafka-specific client until stage 4, when a real broker (Testcontainers) is allowed.
 
 **Status:** compiled only against stubs of the `kafka-clients` 3.x signatures (written for 3.9.1).
@@ -329,7 +329,7 @@ public final class EventClient implements AutoCloseable {
 - an exception in one listener does not affect another;
 - `subscribe` to a missing topic fails with a clear error (mind the broker's `auto.create.topics.enable`).
 
-Run it, fix what it finds. The kata's `GoodAsyncEventsTest` covers the same list on the fake broker and is a
+Run it, fix what it finds. The kata's `GoodKafkaEventsTest` covers the same list on the fake broker and is a
 template for the assertions.
 
 ## Usage in a test

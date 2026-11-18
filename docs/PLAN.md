@@ -66,7 +66,15 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] Records в автоматизации — где подходит (DTO, тест-данные), ловушки (`toString`, массивы), где нет (клиенты, page objects) — `principles/records`
 - [x] Даты и время в тестах — внедрённый `Clock` vs `now()`, выбор типа (`Instant`/`LocalDate`/`ZonedDateTime`/`Duration` vs `Period`, DST), ловушки форматов (`YYYY`, `hh`, `SimpleDateFormat`), проверка серверных timestamp'ов (окно, допуск, точность) — `principles/time`
 - [x] Параллельный запуск и общее состояние — общий `RequestSpecification` / `static WebDriver` vs неизменяемый клиент + драйвер на тест; что делить и какой структурой (Store compute-once, `AtomicLong`, `ConcurrentLinkedQueue`, `BlockingQueue`-пул, `@ResourceLock`, изоляция данными); каталог из 9 механизмов дизайна; единица параллелизации (JUnit / TestNG / Cucumber); JUnit 5 vs TestNG в коде (экземпляр на класс, `ITestResult`-скоуп, `timeOut`-поток, `@Factory`, свой лок через `IHookable`); ловушки `ThreadLocal` — `principles/parallel`
-- [x] Асинхронные события в тестах — слушатель в чужом потоке: `ArrayList` vs `BlockingQueue`, `sleep` vs `poll(timeout)` vs `pollMatching` против шума, реестр слушателей на `CopyOnWriteArrayList` и запоздалый вызов после отписки, `SwitchableListener` (`volatile` vs `synchronized`), отписка того же экземпляра, упавший слушатель, `subscribe` = готовность; фейковый брокер вместо Kafka — `principles/async`
+- [ ] Конкурентность в тестах — когда тесту нужен больше чем один поток; обзор сценариев и инструментов — `principles/concurrency`
+  - [x] а. Перенос `async` → `concurrency/events/kafka`, общее ядро `events` (`EventWaiter`, `SwitchableListener`)
+  - [ ] б. `events/websocket` — push без replay, handshake = готовность, разрыв и reconnect (фейк-сервер)
+  - [ ] в. `events/webhook` — тест как сервер: JDK `HttpServer` на порту 0, ретраи и дубли, быстрый 2xx
+  - [ ] г. `events/ui` — «run and wait» (форма API Playwright), транзиентный toast против поллинга
+  - [ ] д. `race` — гонки в SUT: latch-ворота, двойное списание, idempotency key, lost update
+  - [ ] е. `eventual` — eventual consistency: `sleep` vs самописный поллинг vs Awaitility
+  - [ ] ж. `fanout` + `futures` — параллельная подготовка данных; SUT, возвращающий `CompletableFuture`; потеря MDC/`ThreadLocal`, утечка потоков
+  - Kafka-часть (было `principles/async`): слушатель в чужом потоке: `ArrayList` vs `BlockingQueue`, `sleep` vs `poll(timeout)` vs `pollMatching` против шума, реестр слушателей на `CopyOnWriteArrayList` и запоздалый вызов после отписки, `SwitchableListener` (`volatile` vs `synchronized`), отписка того же экземпляра, упавший слушатель, `subscribe` = готовность; фейковый брокер вместо Kafka
 - [ ] Deep vs Shallow — `HttpHelper` vs `UserApi.create(user)`; temporal coupling
 - [ ] Coupling + DI — page object с `new Browser()` vs внедрение; DIP / IoC / DI
 - [ ] Закон Деметры — цепочки навигации vs намеренные действия; когда fluent API — не нарушение
@@ -95,7 +103,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 ### Этап 4 (позже). Рабочий шаблон фреймворка
 - [ ] Spring / Spring Boot test context вместо ручного DI — сравнение с этапом 2
 - [ ] Testcontainers как альтернативный `EnvironmentProvider` (герметичный прогон)
-- [ ] Kafka `EventClient` на настоящем брокере (Testcontainers) + интеграционный тест — заготовка в [stage4/kafka-event-client.md](stage4/kafka-event-client.md), дизайн разобран в `principles/async`
+- [ ] Kafka `EventClient` на настоящем брокере (Testcontainers) + интеграционный тест — заготовка в [stage4/kafka-event-client.md](stage4/kafka-event-client.md), дизайн разобран в `principles/concurrency/events/kafka`
 - [ ] Профили окружений, Allure (listener → Observer), параллельный запуск, retry, CI
 - [ ] Appium-реализация native mobile за уже существующим интерфейсом
 

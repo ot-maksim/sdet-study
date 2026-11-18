@@ -1,7 +1,8 @@
-package com.study.principles.async.good;
+package com.study.principles.concurrency.events.kafka.good;
 
-import com.study.principles.async.Event;
-import com.study.principles.async.FakeBroker;
+import com.study.principles.concurrency.events.SwitchableListener;
+import com.study.principles.concurrency.events.kafka.Event;
+import com.study.principles.concurrency.events.kafka.FakeBroker;
 
 import java.lang.System.Logger;
 import java.time.Duration;

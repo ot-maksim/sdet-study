@@ -1,4 +1,4 @@
-package com.study.principles.async;
+package com.study.principles.concurrency;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

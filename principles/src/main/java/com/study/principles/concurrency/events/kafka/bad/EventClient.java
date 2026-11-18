@@ -1,7 +1,7 @@
-package com.study.principles.async.bad;
+package com.study.principles.concurrency.events.kafka.bad;
 
-import com.study.principles.async.Event;
-import com.study.principles.async.FakeBroker;
+import com.study.principles.concurrency.events.kafka.Event;
+import com.study.principles.concurrency.events.kafka.FakeBroker;
 
 import java.util.ArrayList;
 import java.util.HashMap;

@@ -1,4 +1,4 @@
-# Async events in tests: a listener runs on someone else's thread
+# Events over Kafka: a listener runs on someone else's thread
 
 A test that checks an event (Kafka, RabbitMQ, a webhook, a WebSocket) does not call the code that delivers
 it: a **background thread** calls the test's listener, at a time the test does not control. Everything
@@ -6,22 +6,25 @@ follows from that: the listener must be thread-safe, the test must **wait for a 
 (never sleep), find **its** event among others, and stop the listener **for sure** before it releases
 whatever the listener touches.
 
-This kata builds on `principles/parallel` (mechanism 7, "append": concurrent collections). There the threads
-are parallel tests; here one of them belongs to the infrastructure.
+Part of [`concurrency/events`](../README.md): the transport-independent core (`EventWaiter`,
+`SwitchableListener`) lives there; this package is the Kafka-shaped client and the full story of the core.
+It builds on `principles/parallel` (mechanism 7, "append": concurrent collections). There the threads are
+parallel tests; here one of them belongs to the infrastructure.
 
 | Package | What to look at |
 |---|---|
-| root | `FakeBroker` (in-memory "Kafka": a topic is an append-only log with offsets; it never calls anybody, clients poll it), `FakeOrderService` (the SUT: answers at once, publishes `OrderCreated` later from its own thread), `Event` (immutable record handed to every listener), `AsyncDemo` |
+| `events` (parent) | `EventWaiter.pollMatching` (wait for *my* event, skip noise), `SwitchableListener` (`synchronized` switch): shared by every transport |
+| `kafka` | `FakeBroker` (in-memory "Kafka": a topic is an append-only log with offsets; it never calls anybody, clients poll it), `FakeOrderService` (the SUT: answers at once, publishes `OrderCreated` later from its own thread), `Event` (immutable record handed to every listener), `KafkaEventsDemo` |
 | `bad` | `EventClient`: listeners in an `ArrayList`, `subscribe` returns before reading starts, no try/catch around a listener. `VolatileSwitchableListener`: a flag without waiting |
-| `good` | `EventClient` (one poll thread, commands queue, `subscribe` blocks until ready, `CopyOnWriteArrayList`, failing listeners logged), `SwitchableListener` (`synchronized` switch), `EventSubscription` (try-with-resources: deactivate → unsubscribe, keeps the instance), `EventWaiter.pollMatching` (wait for *my* event, skip noise) |
+| `good` | `EventClient` (one poll thread, commands queue, `subscribe` blocks until ready, `CopyOnWriteArrayList`, failing listeners logged), `EventSubscription` (try-with-resources: deactivate → unsubscribe, keeps the instance) |
 
 Run:
 ```
-mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.async.AsyncDemo
-mvn -q -pl principles test -Dtest='com.study.principles.async.**.*Test'
+mvn -q -pl principles compile exec:java -Dmain.class=com.study.principles.concurrency.events.kafka.KafkaEventsDemo
+mvn -q -pl principles test -Dtest='com.study.principles.concurrency.events.kafka.**.*Test'
 ```
 
-- `AsyncDemo` — one check written four ways, 30 runs each, the SUT's latency 20–300 ms, other tests creating
+- `KafkaEventsDemo` — one check written four ways, 30 runs each, the SUT's latency 20–300 ms, other tests creating
   orders in the same topic. Typical output:
   ```
   sleep(100), then look in the list      10/30 ok, avg  103 ms per test
@@ -31,10 +34,10 @@ mvn -q -pl principles test -Dtest='com.study.principles.async.**.*Test'
   ```
   A short sleep is flaky, a long one is slow (and flaky on the next slow CI agent); `poll` alone is fast and
   wrong; `pollMatching` is correct **and** as fast as the SUT.
-- `BadAsyncEventsTest` — characterization: each test passes *because* it pins a bug. Latches script the
+- `BadKafkaEventsTest` — characterization: each test passes *because* it pins a bug. Latches script the
   interleavings, so the races are deterministic scenarios (except the `ArrayList` one, which repeats until
   it shows). Expected noise in the output: the bad client's poll thread dying with a stack trace.
-- `GoodAsyncEventsTest` — the same scenarios with the good parts, plus the guarantees of `good.EventClient`.
+- `GoodKafkaEventsTest` — the same scenarios with the good parts, plus the guarantees of `good.EventClient`.
 
 ## 1. The callback runs on the poll thread
 
@@ -119,7 +122,7 @@ which is the problem of §2 again.
 
 `good.EventClient` is the same design as a Kafka test client; the fake replaces only the broker. With
 `kafka-clients` (stage 4: real broker on Testcontainers; full code and integration checklist in
-[docs/stage4/kafka-event-client.md](../../../../../../../../docs/stage4/kafka-event-client.md)):
+[docs/stage4/kafka-event-client.md](../../../../../../../../../../docs/stage4/kafka-event-client.md)):
 
 | Fake | Kafka | Why |
 |---|---|---|
@@ -162,7 +165,7 @@ Sections 1–6 do not change at all: they are about threads, not about Kafka.
 2. Remove `listeners.computeIfAbsent(..).add(listener)` from the start of `good.EventClient.subscribe` and put it
    after `ready.get(..)`. Write a test that shows the lost event (hint: the poll thread must read between
    positioning and registration; a slow first listener or a latch in a test subclass helps).
-3. Make `bad.EventClient` correct step by step, running `BadAsyncEventsTest` after each: which characterization
+3. Make `bad.EventClient` correct step by step, running `BadKafkaEventsTest` after each: which characterization
    test flips first? Which fix makes two tests flip at once?
 4. A test listens to `orders` and `payments` and must check that `PaymentReserved` comes **after**
    `OrderCreated` for the same order. One queue or two? What does `Event.offset()` tell you across topics
