@@ -1,5 +1,8 @@
 # Abstract class: shared state with an invariant
 
+Part of [inheritance vs composition](../README.md): this is the case where inheritance is the *right* tool;
+[`basetest`](../basetest/README.md) and [`pages`](../pages/README.md) show where it is not.
+
 **Invariant** — a condition that must hold for the object's whole life.
 An abstract class is the right tool when several implementations share the same state *and* the same rules for it:
 the base class keeps the state `private`, exposes `final` public methods that enforce the rules,
