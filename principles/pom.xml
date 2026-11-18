@@ -50,6 +50,12 @@
             <artifactId>testng-engine</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- concurrency/eventual kata: compared with a hand-rolled poll -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

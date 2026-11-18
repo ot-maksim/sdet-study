@@ -63,7 +63,7 @@ assert and call the SUT in the test thread, after taking the event from the queu
 | `Thread.sleep(n)` then assert | too short → flaky; long enough → every run pays `n`; "enough" changes with the CI agent |
 | `queue.poll(timeout)` and assert on it | returns the **first** event in the topic: in a shared topic, another test's |
 | `EventWaiter.pollMatching(queue, predicate, timeout)` | returns at the **first matching** event; the timeout is an upper bound, not a pause; `Optional.empty()` lets the assertion say what was missing |
-| Awaitility `untilAsserted` over a `CopyOnWriteArrayList` | good for sets of events ("both OrderCreated and PaymentReserved"); not a dependency here |
+| Awaitility `untilAsserted` over a `CopyOnWriteArrayList` | good for sets of events ("both OrderCreated and PaymentReserved"); see [`concurrency/eventual`](../../eventual/README.md) for its settings |
 
 Match on what **this test** created (order id as the key, a correlation id header), never on "the next event".
 `pollMatching` drops the noise it skips; if two waits share one queue, the second loses what the first

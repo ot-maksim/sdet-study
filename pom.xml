@@ -27,6 +27,7 @@
         <rest-assured.version>5.5.0</rest-assured.version>
         <testng.version>7.11.0</testng.version>
         <testng-engine.version>1.0.6</testng-engine.version>
+        <awaitility.version>4.2.2</awaitility.version>
 
         <surefire.version>3.5.6</surefire.version>
         <exec-plugin.version>3.5.0</exec-plugin.version>
@@ -70,6 +71,12 @@
                 <groupId>org.junit.support</groupId>
                 <artifactId>testng-engine</artifactId>
                 <version>${testng-engine.version}</version>
+            </dependency>
+            <!-- Polling with a deadline for eventually consistent state (concurrency/eventual kata) -->
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -14,7 +14,7 @@ Here the threads live **inside one test**.
 | [`events`](events/README.md) | subscribe **before** the action, wait for *my* event: Kafka, WebSocket, webhook, UI | thread-safe buffer + `EventWaiter.pollMatching`, subscription = readiness | done: Kafka, WebSocket, webhook, UI |
 | `fanout` | independent preconditions created at once | `CompletableFuture.allOf` on an own executor, deadline, one failed branch | planned |
 | [`race`](race/README.md) | race conditions **in the SUT**: double spend, idempotency key, lost update | starting gate (ready/start latches) on an own pool of N, measured overlap, invariant over all outcomes | done |
-| `eventual` | "it will show up": read models, search index, mailbox | poll with a deadline: hand-rolled vs Awaitility (never `CompletableFuture` + `sleep`) | planned |
+| [`eventual`](eventual/README.md) | "it will show up": read models, search index, mailbox | poll with a deadline, named "not yet" errors, a condition that stays true: hand-rolled `Poll` vs Awaitility (never `CompletableFuture` + `sleep`) | done |
 | `futures` | the SUT itself returns `CompletableFuture` | injected `Executor`, never-completing fake, timeout and cancel paths | planned |
 
 ## Which tool, at a glance
