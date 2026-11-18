@@ -88,6 +88,9 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] ISP — толстый `Driver` (13 методов: web + interaction + cookies + жесты + жизненный цикл приложения; web глушит 4, native 5 через `UnsupportedOperationException`; «общий» `LoginPage` падает на native из-за `open(url)`; 13-методный фейк ради одного `screenshot`) → роли с точки зрения клиентов (`Navigation`, `Interaction`, `Screenshots`-лямбда, `Cookies`, `Gestures`, `AppLifecycle`), агрегаты `Browser`/`MobileApp` только для реализаций и root; комбинирование ролей: intersection type vs два параметра vs агрегат; перегиб — интерфейс на метод — `principles/isp`
 - [x] DIP — тест знает про SQL → `UserPrecondition` (API/DB реализации) — `principles/dip`
 - [ ] KISS / DRY / DAMP / YAGNI — шаг с boolean-флагами, пересушенные тесты
+  - [x] `dry` — DRY про знание, не про текст; пересушенные тесты (общий мутабельный шаблон `validUser()` → падение чужого теста только в сьюте, универсальный `run(user, 400, "age_too_low", false)`, ожидания из константы приложения = тавтология (сборка с min age 21 зелёная), `assertThat(equals).isTrue()`, один хелпер на два разошедшихся endpoint'а с флагом `company`) vs «мокрые» (путь и JSON в каждом тесте, переименование = правка на тест) vs DAMP: builder с неважными дефолтами, литеральные ожидания, механика в `UserApi`, свой AssertJ `ResponseAssert`; независимость от порядка (random seed); что сушить, что оставлять в тесте — `principles/dry`
+  - [ ] `kiss` — шаг с boolean-флагами, YAGNI («гибкость на будущее»), правило трёх
+  - [ ] Сводная шпаргалка «как распознать запах» по всем каталам этапа 1
 
 ### Этап 2. Применение: SUT + учебный скелет фреймворка
 - [ ] `sut/`: Javalin, REST `/users`, HTML-страница со списком, Postgres через JDBC, `docker compose`

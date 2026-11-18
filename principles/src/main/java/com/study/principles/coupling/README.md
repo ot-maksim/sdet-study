@@ -93,7 +93,7 @@ An object may only hold dependencies that live **at least as long** as it does.
 - **A DI container for five classes** — a hand-written root is shorter and debuggable. Containers pay off
   with many modules, scopes and profiles (stage 4).
 - **Injecting what a test should state** — test data and expected values belong in the test body, not in
-  a resolver that hides them (DAMP over DRY, block 1c).
+  a resolver that hides them (DAMP over DRY: [`dry`](../dry/README.md)).
 
 ## Try it yourself
 1. Add a `ScreenshotOnFailure` behaviour. In `bad/newinside`, which browser do you screenshot? In `good`,
