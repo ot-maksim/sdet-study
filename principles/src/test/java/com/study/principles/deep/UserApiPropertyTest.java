@@ -7,6 +7,7 @@ import com.study.principles.deep.good.NewUser;
 import com.study.principles.deep.good.User;
 import com.study.principles.deep.good.UserApi;
 import net.jqwik.api.Arbitraries;
+import net.jqwik.api.Assume;
 import net.jqwik.api.Arbitrary;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
@@ -23,6 +24,9 @@ class UserApiPropertyTest {
 
     @Property(tries = 300)
     void anyNameRoundTripsThroughTheDeepApi(@ForAll @NotBlank String name) {
+        // jqwik's @NotBlank only trims chars <= ' '; the SUT uses String.isBlank(), which also rejects
+        // Unicode spaces such as U+2003. The SUT's definition of "blank" wins — jqwik found the mismatch.
+        Assume.that(!name.isBlank());
         UserApi users = new UserApi(new AuthApi(new FakeUsersBackend())
                 .login(FakeUsersBackend.ADMIN, FakeUsersBackend.ADMIN_PASSWORD));
 
