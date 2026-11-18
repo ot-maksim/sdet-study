@@ -66,7 +66,7 @@ behaviour does not differ, so there is nothing for polymorphism to do.
 - **Two variants that have not changed in years** — `if (mobile)` in one place is fine. Rule of three:
   abstract when the third variant arrives, or when the second switch on the same value appears.
 - **Speculative extension points** — `BeforeClickHook`, `ClickStrategy`, plugin interfaces with one
-  implementation "for flexibility". Each is code to read and keep correct; YAGNI (block 1c).
+  implementation "for flexibility". Each is code to read and keep correct; YAGNI ([`kiss`](../kiss/README.md)).
 - **Plugins inside one repository** — `ServiceLoader` earns its keep across modules or teams. In a single
   module a list in the registry is simpler and greppable; the kata uses it to show the mechanism.
 - **Values pretending to be behaviour** — environments, users, locales: put them in data.

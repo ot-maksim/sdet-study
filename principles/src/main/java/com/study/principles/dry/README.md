@@ -49,7 +49,7 @@ mechanics were not.
 
 ## Smells
 
-- Helpers with positional booleans and nulls: `run(user, 400, null, false, true)` (flags: `kiss`, next in block 1c).
+- Helpers with positional booleans and nulls: `run(user, 400, null, false, true)` (flags: [`kiss`](../kiss/README.md)).
 - A shared `static` map/object that tests modify; tests that pass alone and fail in the suite.
 - Expectations computed from production code or config: `MIN_AGE - 1`, `price * TAX_RATE` copied from the app.
 - `assertTrue(actual.equals(expected))`, `verifyAll(response)` — failures that need a debugger.
@@ -75,7 +75,7 @@ mechanics were not.
 - **An independent oracle** — computing the expected value is fine when the computation is written in the
   test domain and checked against examples (`srp`: `ExpectedPrice` + jqwik), not copied from the app.
 - **Production code** — DAMP is a test-code idea; in the framework itself duplicated knowledge is a bug
-  waiting to happen. But the rule of three holds there too: two similar pieces are not yet a pattern (`kiss`).
+  waiting to happen. But the rule of three holds there too: two similar pieces are not yet a pattern ([`kiss`](../kiss/README.md)).
 
 ## Try it yourself
 1. Add a test "email without `@` is rejected" in all three styles. Count what you touched in each.

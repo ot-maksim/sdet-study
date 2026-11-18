@@ -65,7 +65,7 @@ files for one change, and `CheckoutFlow` exists only to undo the split. In `good
 - **Early, small, one owner** — a five-test suite written by one person against a stable app: one page class
   with a helper method is fine; split when the second actor shows up (the first redesign, the first DB check).
 - **Speculative actors** — "someone might want Allure some day" is YAGNI; split when the second reporter exists
-  (block 1c).
+  ([`kiss`](../kiss/README.md): the reporter interface guessed before the second consumer).
 - **A facade on purpose** — a domain step like `checkout.buy(user, cart)` *coordinates* API, UI and DB; that is
   its one responsibility (orchestration), as long as it delegates and holds no selectors, SQL or rules itself.
 
