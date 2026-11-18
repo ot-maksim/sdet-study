@@ -68,7 +68,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] Параллельный запуск и общее состояние — общий `RequestSpecification` / `static WebDriver` vs неизменяемый клиент + драйвер на тест; что делить и какой структурой (Store compute-once, `AtomicLong`, `ConcurrentLinkedQueue`, `BlockingQueue`-пул, `@ResourceLock`, изоляция данными); каталог из 9 механизмов дизайна; единица параллелизации (JUnit / TestNG / Cucumber); JUnit 5 vs TestNG в коде (экземпляр на класс, `ITestResult`-скоуп, `timeOut`-поток, `@Factory`, свой лок через `IHookable`); ловушки `ThreadLocal` — `principles/parallel`
 - [ ] Конкурентность в тестах — когда тесту нужен больше чем один поток; обзор сценариев и инструментов — `principles/concurrency`
   - [x] а. Перенос `async` → `concurrency/events/kafka`, общее ядро `events` (`EventWaiter`, `SwitchableListener`)
-  - [ ] б. `events/websocket` — push без replay, handshake = готовность, разрыв и reconnect (фейк-сервер)
+  - [x] б. `events/websocket` — push без replay на JDK `WebSocket`: готовность = ack сервера, demand (`request(1)`), фрагменты (`last`), потеря соединения как быстрая ошибка с причиной (pill в очереди), reconnect-разрыв → проверка состояния через API (фейк-сервер)
   - [ ] в. `events/webhook` — тест как сервер: JDK `HttpServer` на порту 0, ретраи и дубли, быстрый 2xx
   - [ ] г. `events/ui` — «run and wait» (форма API Playwright), транзиентный toast против поллинга
   - [ ] д. `race` — гонки в SUT: latch-ворота, двойное списание, idempotency key, lost update

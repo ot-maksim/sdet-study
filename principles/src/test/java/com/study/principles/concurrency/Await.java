@@ -3,6 +3,7 @@ package com.study.principles.concurrency;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 
 /** Small waiting helpers for the concurrency katas' tests: every wait has a deadline, none is a fixed pause. */
@@ -28,6 +29,17 @@ public final class Await {
         while (count.getAsInt() < expected) {
             if (System.nanoTime() > deadline) {
                 throw new AssertionError("Expected " + expected + " within " + timeout + ", got " + count.getAsInt());
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    /** Waits until the condition holds; fails after the timeout. */
+    public static void until(BooleanSupplier condition, Duration timeout) {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (!condition.getAsBoolean()) {
+            if (System.nanoTime() > deadline) {
+                throw new AssertionError("Condition not met within " + timeout);
             }
             Thread.onSpinWait();
         }
