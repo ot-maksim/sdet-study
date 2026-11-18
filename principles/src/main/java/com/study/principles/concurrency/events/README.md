@@ -30,5 +30,5 @@ differences that make tests flaky.
 |---|---|---|---|---|
 | Kafka | [`kafka`](kafka/README.md) | the poll thread stands at the end of the topic | replayable: seek to an older offset | pull model, one poll thread, positions, listener registry |
 | WebSocket | [`websocket`](websocket/README.md) | the server acked the subscription (not: the frame was sent) | **gone**: no replay | push model on the JDK `WebSocket` API: demand (`request(n)`), fragments, a lost connection as a fast named failure, the reconnect gap |
-| Webhook | `webhook` (next) | own HTTP server listens, URL registered in the SUT | the SUT **retries**: duplicates | the test is the server: port 0, answer 2xx fast, idempotent matching, never assert in the handler |
+| Webhook | [`webhook`](webhook/README.md) | own HTTP server listens on port 0, URL registered in the SUT | the SUT **retries**: duplicates | the test is the server (real JDK `HttpServer`): port 0, answer 2xx at once, count events not deliveries, never assert in the handler |
 | UI | `ui` (next) | the waiter is armed before the click | transient state (a toast) is gone before a poll sees it | "run and wait": the API wraps the action (Playwright `waitForResponse(predicate, action)`) |

@@ -11,7 +11,7 @@ Here the threads live **inside one test**.
 
 | Package | Scenario | Main tool | Status |
 |---|---|---|---|
-| [`events`](events/README.md) | subscribe **before** the action, wait for *my* event: Kafka, WebSocket, webhook, UI | thread-safe buffer + `EventWaiter.pollMatching`, subscription = readiness | Kafka, WebSocket done; webhook, UI next |
+| [`events`](events/README.md) | subscribe **before** the action, wait for *my* event: Kafka, WebSocket, webhook, UI | thread-safe buffer + `EventWaiter.pollMatching`, subscription = readiness | Kafka, WebSocket, webhook done; UI next |
 | `fanout` | independent preconditions created at once | `CompletableFuture.allOf` on an own executor, deadline, one failed branch | planned |
 | `race` | race conditions **in the SUT**: double spend, idempotency key, lost update | start gate (`CountDownLatch`) + N concurrent calls | planned |
 | `eventual` | "it will show up": read models, search index, mailbox | poll with a deadline: hand-rolled vs Awaitility (never `CompletableFuture` + `sleep`) | planned |

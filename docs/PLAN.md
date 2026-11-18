@@ -69,7 +69,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [ ] Конкурентность в тестах — когда тесту нужен больше чем один поток; обзор сценариев и инструментов — `principles/concurrency`
   - [x] а. Перенос `async` → `concurrency/events/kafka`, общее ядро `events` (`EventWaiter`, `SwitchableListener`)
   - [x] б. `events/websocket` — push без replay на JDK `WebSocket`: готовность = ack сервера, demand (`request(1)`), фрагменты (`last`), потеря соединения как быстрая ошибка с причиной (pill в очереди), reconnect-разрыв → проверка состояния через API (фейк-сервер)
-  - [ ] в. `events/webhook` — тест как сервер: JDK `HttpServer` на порту 0, ретраи и дубли, быстрый 2xx
+  - [x] в. `events/webhook` — тест как сервер на JDK `HttpServer`: порт 0 и адрес, достижимый для SUT; запись → мгновенный 2xx → проверки в потоке теста; ассерт в хэндлере теряется; at-least-once: события vs доставки, `respondNext` для проверки retry-политики SUT; HMAC по сырому телу
   - [ ] г. `events/ui` — «run and wait» (форма API Playwright), транзиентный toast против поллинга
   - [ ] д. `race` — гонки в SUT: latch-ворота, двойное списание, idempotency key, lost update
   - [ ] е. `eventual` — eventual consistency: `sleep` vs самописный поллинг vs Awaitility
