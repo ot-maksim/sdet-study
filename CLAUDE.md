@@ -18,6 +18,8 @@ of a session; tick items there when a topic is done.
 - `framework/` — stage 2 skeleton, one Maven module per layer (`framework/<layer>`, artifact `framework-<layer>`,
   package `com.study.framework.<layer>`); clients (`api`, `db`, `ui`) depend on `core` only, `domain` on clients, `tests` on all; the composition root (bindings of
   all modules) lives in `framework/tests`. Key decisions as ADRs in `docs/adr/`.
+- `review/` — stage 3: an inherited framework with planted problems (`bad`), the answer key (`REVIEW.md`), the
+  refactoring (`good`); one `P<NN>*ReviewTest` per problem. `bad/suite` is review material, not run by Surefire.
 
 ## Kata format (principles/)
 1. `README.md` in the topic package: the principle in 2–3 lines, a table of packages and what to

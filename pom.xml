@@ -17,6 +17,7 @@
         <module>principles</module>
         <module>sut</module>
         <module>framework</module>
+        <module>review</module>
     </modules>
 
     <properties>
