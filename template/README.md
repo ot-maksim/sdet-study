@@ -1,4 +1,4 @@
-# template — stage 4: Spring Boot test context + Testcontainers + Kafka events
+# template — stage 4: Spring Boot test context + Testcontainers + Kafka events + report and CI
 
 The working template. The stage 2 layers (`framework/core`, `api`, `db`, `ui`, `domain`) are reused **as they are**;
 only the assembly is new: a Spring Boot test context instead of the hand-written root, and an environment that is
@@ -13,12 +13,13 @@ Nothing below the assembly knows about Spring, Docker or which environment ran.
 | `TemplateProperties` + `application*.yml` | every key, typed records; `ignoreUnknownFields = false` (a typo fails); profiles `stand`, `ci`, `mobile`, `db` as slices that combine |
 | `scope/TestScope` | the test scope Spring does not have; bound to the thread only while a test's parameters are resolved |
 | `scope/CaptiveDependencyGuard` | a singleton holding a test bean fails at creation, as in stage 2 |
-| `TemplateExtension` | parameters without `@Autowired`; skip or fail when the environment is unavailable; screenshot of a failed UI test |
+| `TemplateExtension` | parameters without `@Autowired`; skip or fail when the environment is unavailable; parallelism within the browser pool; screenshot of a failed UI test → `Artifacts` |
 | `environment/` | `EnvironmentProvider` seam; `StandEnvironment` (connect + probe), `ContainersEnvironment` (Postgres + Kafka + SUT image, private network, random ports, generated password); `eventsUnavailable()` — the broker as a capability |
 | `events/` (4b) | `EventClient` (one consumer thread per run, `assign` + per-listener start offsets), `Event`, `EventSubscription`, `SwitchableListener`, `EventWaiter` — from the stage 4 note and the kata, no Spring |
 | `events/users/UserEvents` (4b) | the SUT's `users` topic as a test sees it; `@TestScoped`: subscribed before the test body, closed after it; finds by user id, keeps what it skipped |
+| `report/` (4c) | `Artifacts` + `ArtifactListener` (Observer: files, Allure); `ReportingUserPrecondition`, `ReportingUsersScreen` (decorators over stage 2 interfaces); `ReportingAspect` + `META-INF/aop.xml` (steps of final classes, woven at load time) |
 | `@ApiTests` / `@UiTests` / `@E2eTests` / `@EventTests` → `@TemplateTest` | test kinds: a tag + `@SpringBootTest` + the extension; one cached context for the run; `@EventTests` also need a broker |
-| tests | `UsersApiTest`, `UsersPageTest`, `UserJourneyE2eTest` — copies of stage 2; `UserEventsE2eTest` — API/page → `user.created`; `events/EventClientTest` — the client against its own broker; `scope/TestScopeTest`, `TemplatePropertiesTest`, `TemplateExtensionTest` — the mechanics |
+| tests | `UsersApiTest`, `UsersPageTest`, `UserJourneyE2eTest` — copies of stage 2; `UserEventsE2eTest` — API/page → `user.created`; `events/EventClientTest` — the client against its own broker; `report/ReportingTest`, `report/ArtifactsTest` — what reaches the report; `scope/TestScopeTest`, `TemplatePropertiesTest`, `TemplateExtensionTest` — the mechanics |
 
 ## Run
 
@@ -35,6 +36,9 @@ Against the compose stand with events (`SUT_KAFKA_BOOTSTRAP=kafka:19092 docker c
 ```
 mvn -q -pl template -am verify -Dspring.profiles.active=stand -Dtemplate.stand.kafka-bootstrap=localhost:9094
 ```
+
+Report (stage 4c): after a run, `mvn -pl template allure:serve` opens it; `allure:report` writes
+`target/site/allure-maven-plugin`. Retry as in CI: `CI=true mvn -q -pl template -am verify` (or `-Pci`).
 
 Any key also from the environment: `TEMPLATE_UI_PROFILE=mobile`, `SPRING_PROFILES_ACTIVE=stand`.
 `-am` matters for the containers mode: it packages `sut/target/sut.jar`, which the image is built from.
@@ -61,7 +65,7 @@ Any key also from the environment: `TEMPLATE_UI_PROFILE=mobile`, `SPRING_PROFILE
 | default (containers), parallel | 9/9 green; environment up in ~6 s (Postgres ~1 s, image build ~3 s, SUT ~1 s); whole module ~30 s |
 | `stand` profile against compose | 9/9 green; rows in `users` before = after (cleanup works for both modes) |
 | `mobile,db` on containers | 9/9 green — no test changed |
-| `stand` + `template.ui.timeout=1ms` | UI tests fail, one screenshot per failed test in `target/screenshots/`, still no rows left |
+| `stand` + `template.ui.timeout=1ms` | UI tests fail, one screenshot per failed test (since 4c in `target/artifacts/` and in Allure), still no rows left |
 | no `sut.jar` (`-Dtemplate.containers.sut-build-dir=/nowhere`) | skipped: "No /nowhere/target/sut.jar to build the SUT image from: mvn -q -pl sut -am package -DskipTests" |
 | the same with profile `ci` | fails with that reason |
 | mechanics (no Docker needed) | `TestScopeTest` 5, `TemplatePropertiesTest` 5, `TemplateExtensionTest` 5 |
@@ -113,6 +117,65 @@ Checked: default (containers) — 37 tests green, environment with Kafka up in ~
 `EventClientTest` 5 runs in a row green; `stand` + compose `--profile events` + `kafka-bootstrap=localhost:9094` —
 event tests green, `users` rows before = after; `stand` without the key — 3 event tests skipped with the reason.
 
+## Stage 4c: report, retry, parallel run, CI
+
+```
+JUnit Platform ──events──▶ allure-junit-platform (Observer, ServiceLoader) ──▶ target/allure-results
+   test body ── UserSteps.registerThroughUi ◀── ReportingAspect (woven: final class, no seam)
+                  └─ UsersScreen.create      ◀── ReportingUsersScreen (decorator: interface = seam)
+                  └─ ApiClient.send (private) ◀── ReportingAspect: "POST /api/users -> 201" + request/response
+   failed UI test ── TemplateExtension ──▶ Artifacts ──▶ ArtifactFiles (target/artifacts)
+                                                      └─▶ AllureArtifacts (attachment)
+```
+
+What one E2E test looks like in the report (`UserJourneyE2eTest`, from `allure-results`):
+
+```
+UserSteps.aNewUser                         result=NewUser[name=Ada ..., email=ada-...@example.test]
+screen: open users
+UserSteps.registerThroughUi                screen=ReportingUsersScreen, user=NewUser[...], result=ShownUser[id=7 ...]
+  screen: create ada-...@example.test      form=UserForm[...]
+GET /api/users/7 -> 200                    [response]
+screen: delete ada-...@example.test
+GET /api/users/7 -> 404                    [response]
+GET /api/users?{email=ada-...} -> 200      [response]      <- the test's cleanup, after the body
+```
+
+| Concern | Here | Stage 1 / 2 |
+|---|---|---|
+| Who calls the report | nobody: the engine notifies, listeners observe | — |
+| Steps of a class with an interface | decorator, wired in the root (explicit, compile-checked) | principles/decorator |
+| Steps of a final class | aspect, woven at load time (no change to the class, names by string) | — |
+| Screenshot | published to observers; the extension does not know where it lands | printed path |
+| Retry | CI only, once; green on the second attempt = flaky, listed, never hidden | `principles/invariants/retry`: retry the *operation* that is allowed to fail, not the test |
+| Parallelism ≤ browsers | refused at start with the reason | a comment in `junit-platform.properties` |
+| A class that must run alone | `@Isolated` (`ReportingTest` swaps Allure's global lifecycle) | — |
+
+Retry policy, the one-line version: **a retry must not change what a person learns from the run.** Locally nothing
+is retried (the author sees the failure). In CI a failed test runs once more in the same JVM (same context, same
+environment); green on the second attempt is green for the build, and a *flake* in four places: Surefire's
+`Flakes:` line and `flakyFailure` in the XML, both attempts in Allure (Retries tab, flaky mark, retry trend), the
+job summary and a warning annotation of the pipeline. What may retry inside a test (a poll until an event, a
+`find` until the page shows a row) is a bounded wait in the client, not a rerun.
+
+CI ([`.github/workflows/tests.yml`](../.github/workflows/tests.yml)): JDK 17 + cached Maven and Chromium
+(`install --with-deps`), the compose stand for stage 2 (`-Dstand.required=true`), template on its own
+containers (`-Dspring.profiles.active=ci`), `mvn -B verify` of the whole reactor; flakes into the summary;
+the Allure report with history from the published site → an artifact of every run and GitHub Pages from `main`
+(a red run publishes too — that is when it is read).
+
+Checked:
+
+| Run | Result |
+|---|---|
+| default (containers) | 44 tests green, ~21 s for the module; 44 results in `allure-results`, steps and API attachments as above |
+| `-Dgroups=ui -Dtemplate.ui.timeout=1ms -Pci` | 4 UI tests fail twice (rerun), a screenshot per attempt: in `target/artifacts` and attached in Allure |
+| a test failing only on its first attempt | local: `BUILD FAILURE`; `CI=true`: `BUILD SUCCESS`, `Flakes: 1`, `flakyFailure` in the XML, two Allure results with one `historyId` (failed, passed) |
+| `-Djunit...fixed.parallelism=8` (4 browsers) | every template test fails before the environment starts: "JUnit runs up to 8 tests at once, the browser pool has 4 ..." |
+| `TemplatePropertiesTest` with `-Dspring.profiles.active=stand` / `ci`, `SPRING_PROFILES_ACTIVE=stand` | green (was red: the machine's properties leaked into "the defaults"; the test now builds its context without them) |
+| the CI test step locally (`CI=true mvn -B verify -Dstand.required=true -Dspring.profiles.active=ci`, compose up) | whole reactor green after two fixes it found: `TemplateExtensionTest`'s skip cases now state `require-environment=false` (the global `ci` profile turned them into failures); `--fail-at-end` (a flaky kata stopped the reactor before template). Template 44/44; `allure:report` generated |
+| the workflow on GitHub | not run: the repository has no remote yet |
+
 ## Pros and cons
 
 | + | − |
@@ -122,6 +185,8 @@ event tests green, `users` rows before = after; `stand` without the key — 3 ev
 | Hermetic by default: a clean machine with Docker runs everything | Docker everywhere; ~6 s before the first test; a stale jar is a stale SUT |
 | One environment per run without static state (context cache) | Any per-class configuration change silently starts a second context and environment |
 | Events through the same graph: a test asks for `UserEvents` like for `UserApi` | The poll thread runs every listener of the run: one slow listener delays all event tests |
+| A report with steps, HTTP and screenshots, and stage 2 did not change for it | An aspect names methods by string; a run without the agent (IDE) has no steps — a test guards both |
+| A flaky test is green and visible at once | A rerun doubles the time of a really broken test; somebody must read the flaky list |
 
 ## When NOT to apply
 
@@ -135,6 +200,9 @@ event tests green, `users` rows before = after; `stand` without the key — 3 ev
 - Events in a test that can check the result synchronously (the API returned it, the row is there): an event test
   waits, and a missing event costs the whole timeout. Check events when the event **is** the contract.
 - A consumer group in a test client: rebalances, committed offsets between runs — see ADR 0010.
+- An aspect where an interface exists: the decorator says the same in code the compiler checks.
+- AspectJ to report a framework you own: add a neutral `StepListener` port to it instead (ADR 0011, alternatives).
+- Retries as a fix: a flake list nobody reads is the same as `@Disabled` with extra CPU.
 
 ## Try it yourself
 
@@ -157,8 +225,18 @@ event tests green, `users` rows before = after; `stand` without the key — 3 ev
 8. Stop the broker in the middle of a run (`docker stop` on the Kafka container). What does the SUT log, what does
    the API return, what does the test report? Where would an outbox change the answer?
 
+9. Rename `ApiClient.send` to `exchange` (stage 2) and run the module. What does the compiler say, what does the
+   report lose, which test notices? Now do the same with `UsersScreen.find` and compare.
+10. In `ReportingUsersScreen.open`, return `delegate.open()` instead of `this`. Run `UserJourneyE2eTest` and read its
+    steps in `allure-results`: which actions are missing, and why does no test fail?
+11. Write a test that fails on every second run (a static counter), run with `-Pci`, then `allure:serve`. Find it
+    in Retries and in the flaky filter. Then remove the agent from `argLine` and run again: what is red now?
+12. Add a third `ArtifactListener` that writes the page's HTML of a failed UI test (`page.content()`). What has to
+    change in `TemplateExtension`, and what in `TemplateConfiguration`?
+
 ## Decisions
 
 [ADR 0008 — Spring Boot test context as the composition root](../docs/adr/0008-spring-test-context.md),
 [ADR 0009 — environment provider: a running stand or Testcontainers](../docs/adr/0009-environment-provider.md),
-[ADR 0010 — events: the SUT publishes to Kafka, one EventClient per run](../docs/adr/0010-events-kafka.md).
+[ADR 0010 — events: the SUT publishes to Kafka, one EventClient per run](../docs/adr/0010-events-kafka.md),
+[ADR 0011 — report, retry, parallel run and CI](../docs/adr/0011-report-retry-ci.md).

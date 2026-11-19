@@ -71,6 +71,26 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
         </dependency>
+        <!-- Stage 4c: the report. The listener observes the JUnit Platform (auto-registered by ServiceLoader);
+             steps come from report/ (decorators + an aspect woven at load time), never from framework/ -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-junit-platform</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-java-commons</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+        </dependency>
+        <!-- Not on the class path at run time for its classes: Surefire starts it as -javaagent (see below) -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -103,4 +123,57 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- One JVM for the whole module: a fork is another Spring context, another environment
+                         (containers) and another browser pool. Parallelism is inside it (junit-platform.properties) -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <!-- The weaver of report/ReportingAspect; without it the run is the same, only without steps.
+                         add-opens: the weaver defines generated classes through ClassLoader (JDK 16+) -->
+                    <argLine>
+                        -javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                    </argLine>
+                    <!-- Local runs never retry: a flaky test fails where its author sees it (profile ci below) -->
+                    <rerunFailingTestsCount>${template.rerun}</rerunFailingTestsCount>
+                </configuration>
+            </plugin>
+            <!-- mvn -pl template allure:serve (after a run) | allure:report -> target/site/allure-maven-plugin -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <configuration>
+                    <reportVersion>${allure-report.version}</reportVersion>
+                    <resultsDirectory>allure-results</resultsDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <properties>
+        <template.rerun>0</template.rerun>
+    </properties>
+
+    <profiles>
+        <!-- CI (active when the CI variable is set, as on GitHub Actions; or -Pci): a failed test gets one more
+             attempt. Passed on the second = "flaky" in the Surefire XML and in Allure's Retries: green, but visible.
+             The Spring profile ci (fail on a missing environment) is separate: -Dspring.profiles.active=ci -->
+        <profile>
+            <id>ci</id>
+            <activation>
+                <property>
+                    <name>env.CI</name>
+                </property>
+            </activation>
+            <properties>
+                <template.rerun>1</template.rerun>
+            </properties>
+        </profile>
+    </profiles>
 </project>

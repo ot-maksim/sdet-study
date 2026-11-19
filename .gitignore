@@ -3,3 +3,5 @@ target/
 *.iml
 .DS_Store
 .jqwik-database
+# allure-maven downloads the report generator here
+.allure/

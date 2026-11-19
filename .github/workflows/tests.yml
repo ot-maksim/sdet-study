@@ -1,0 +1,125 @@
+# The whole repository on every push: katas, the SUT, stage 2 against the compose stand, stage 4 (template/) against
+# its own containers. Then the Allure report of template/: an artifact of every run, and GitHub Pages (with the
+# history of earlier runs: trends, retries, flaky) for main. Decisions: docs/adr/0011-report-retry-ci.md
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      report: ${{ steps.report.outcome == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Playwright's Chromium (~450 MB) is keyed on the parent pom, where its version lives
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+
+      - name: Chromium and its system libraries
+        run: |
+          mvn -B -q -pl framework/ui -am compile dependency:build-classpath \
+            -Dmdep.outputFile=target/classpath.txt -Dmdep.includeScope=compile
+          java -cp "$(cat framework/ui/target/classpath.txt)" com.microsoft.playwright.CLI install --with-deps chromium
+
+      # Stage 2 connects to a stand somebody else started (ADR 0009); template/ starts its own containers on
+      # random ports, so both run side by side on the runner's Docker
+      - name: Compose stand for stage 2
+        run: |
+          mvn -B -q -pl sut -am package -DskipTests
+          docker compose up -d --build --wait
+
+      # CI is set by GitHub: Maven profile ci of template/ reruns a failed test once (flaky = green but reported).
+      # stand.required / Spring profile ci: a missing environment fails the build instead of skipping tests.
+      # --fail-at-end: a red kata must not hide the results (and the report) of the modules after it
+      - name: Tests
+        run: mvn -B --fail-at-end verify -Dstand.required=true -Dspring.profiles.active=ci
+
+      - name: Flaky tests
+        if: ${{ !cancelled() }}
+        run: |
+          flaky=$(grep -l '<flakyFailure\|<flakyError' $(find . -path '*/surefire-reports/TEST-*.xml') 2>/dev/null \
+            | sed -E 's#.*/TEST-(.*)\.xml#\1#' || true)
+          if [ -z "$flaky" ]; then
+            echo "No flaky tests" >> "$GITHUB_STEP_SUMMARY"
+          else
+            { echo "### Flaky: passed only on a rerun"; echo "$flaky" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
+            echo "$flaky" | while read -r test; do echo "::warning title=Flaky test::$test passed only on a rerun"; done
+          fi
+
+      - name: Stop the stand
+        if: ${{ always() }}
+        run: docker compose down -v
+
+      # Allure 2 keeps trends in history/ of the previous report: take it from the published site, if there is one
+      - name: History of earlier runs
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+        id: pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+
+      - name: Restore history
+        if: ${{ steps.pages.outcome == 'success' }}
+        run: |
+          mkdir -p template/target/allure-results/history
+          for f in history history-trend duration-trend categories-trend retry-trend; do
+            curl -sfL "${{ steps.pages.outputs.base_url }}/history/$f.json" \
+              -o "template/target/allure-results/history/$f.json" || echo "no $f.json yet"
+          done
+
+      - name: Allure report
+        id: report
+        if: ${{ !cancelled() && hashFiles('template/target/allure-results/*.json') != '' }}
+        run: mvn -B -q -pl template allure:report
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results
+          path: |
+            template/target/site/allure-maven-plugin
+            template/target/allure-results
+            template/target/artifacts
+            **/target/surefire-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - uses: actions/upload-pages-artifact@v3
+        if: ${{ steps.report.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+        with:
+          path: template/target/site/allure-maven-plugin
+
+  # A red build still publishes its report: that is when it is read
+  report:
+    needs: test
+    if: ${{ !cancelled() && needs.test.outputs.report == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

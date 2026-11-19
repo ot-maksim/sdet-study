@@ -2,9 +2,14 @@ package com.study.template;
 
 import com.study.framework.ui.UiSession;
 import com.study.template.environment.EnvironmentProvider;
+import com.study.template.report.Artifact;
+import com.study.template.report.Artifacts;
 import com.study.template.scope.TestBeans;
 import com.study.template.scope.TestScope;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -33,7 +38,10 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  *   <li><b>environment policy</b>: asks the {@link EnvironmentProvider} before any test; unavailable → skipped with
  *       the reason, or failed when {@code template.require-environment=true} (CI); for {@link EventTests} also
  *       whether the environment has a broker;</li>
- *   <li><b>a screenshot of a failed test</b>, only if the test had a browser.</li>
+ *   <li><b>parallelism within the browser pool</b>: more parallel tests than {@code template.ui.max-browsers}
+ *       would wait for a browser and fail on its timeout, far from the cause; refused before the first test;</li>
+ *   <li><b>a screenshot of a failed test</b>, only if the test had a browser — published to {@link Artifacts}
+ *       (stage 4c): this class does not know whether it lands in a folder, in Allure or in both.</li>
  * </ul>
  */
 public final class TemplateExtension implements ExecutionCondition, ParameterResolver, AfterTestExecutionCallback, AfterEachCallback {
@@ -46,6 +54,12 @@ public final class TemplateExtension implements ExecutionCondition, ParameterRes
             return ConditionEvaluationResult.enabled("no test class");
         }
         ApplicationContext spring = SpringExtension.getApplicationContext(context);
+        int maxBrowsers = spring.getBean(TemplateProperties.class).ui().maxBrowsers();
+        Parallelism.of(context).filter(parallelism -> parallelism > maxBrowsers).ifPresent(parallelism -> {
+            throw new IllegalStateException("JUnit runs up to " + parallelism + " tests at once, the browser pool has "
+                    + maxBrowsers + " (template.ui.max-browsers): UI tests would wait and time out. Lower "
+                    + "junit.jupiter.execution.parallel.config.fixed.parallelism or raise template.ui.max-browsers");
+        });
         EnvironmentProvider provider = spring.getBean(EnvironmentProvider.class);
         Optional<String> reason = provider.unavailable();
         if (reason.isEmpty() && AnnotationSupport.isAnnotated(context.getTestClass(), EventTests.class)) {
@@ -99,17 +113,31 @@ public final class TemplateExtension implements ExecutionCondition, ParameterRes
             return;
         }
         beans.peek(UiSession.class).ifPresent(session -> {
-            String name = (context.getRequiredTestClass().getSimpleName() + "-" + context.getDisplayName())
-                    .replaceAll("[^A-Za-z0-9._-]+", "_");
-            Path file = Path.of("target", "screenshots", name + ".png");
+            String test = context.getRequiredTestClass().getSimpleName() + "-" + context.getDisplayName();
             try {
-                session.screenshot(file);
-                System.err.println("Screenshot of the failed test: " + file.toAbsolutePath());
+                byte[] png = screenshot(session);
+                SpringExtension.getApplicationContext(context).getBean(Artifacts.class)
+                        .publish(new Artifact(test, "screenshot", "image/png", "png", png));
             } catch (RuntimeException e) {
                 // A broken screenshot must not replace the test's own failure in the report
-                System.err.println("No screenshot for " + name + ": " + e.getMessage().lines().findFirst().orElse(""));
+                System.err.println("No screenshot for " + test + ": " + e.getMessage().lines().findFirst().orElse(""));
             }
         });
+    }
+
+    /** {@code UiSession} (stage 2) writes to a file only; the bytes go to every listener. */
+    private static byte[] screenshot(UiSession session) {
+        try {
+            Path file = Files.createTempFile("screenshot-", ".png");
+            try {
+                session.screenshot(file);
+                return Files.readAllBytes(file);
+            } finally {
+                Files.deleteIfExists(file);
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override
@@ -117,6 +145,25 @@ public final class TemplateExtension implements ExecutionCondition, ParameterRes
         TestBeans beans = context.getStore(NAMESPACE).remove(TestBeans.class, TestBeans.class);
         if (beans != null) {
             beans.close();
+        }
+    }
+
+    /** How many tests JUnit may run at once, from the same keys it reads (junit-platform.properties, -D). */
+    static final class Parallelism {
+
+        private static final String PREFIX = "junit.jupiter.execution.parallel.";
+
+        static Optional<Integer> of(ExtensionContext context) {
+            if (!context.getConfigurationParameter(PREFIX + "enabled").map(Boolean::parseBoolean).orElse(false)) {
+                return Optional.of(1);
+            }
+            String strategy = context.getConfigurationParameter(PREFIX + "config.strategy").orElse("dynamic");
+            return switch (strategy) {
+                case "fixed" -> context.getConfigurationParameter(PREFIX + "config.fixed.parallelism").map(Integer::parseInt);
+                case "dynamic" -> Optional.of((int) Math.ceil(Runtime.getRuntime().availableProcessors()
+                        * context.getConfigurationParameter(PREFIX + "config.dynamic.factor").map(Double::parseDouble).orElse(1.0)));
+                default -> Optional.empty();   // custom: its own business
+            };
         }
     }
 

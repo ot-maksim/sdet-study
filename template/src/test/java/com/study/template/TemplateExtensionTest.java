@@ -31,9 +31,13 @@ import org.springframework.test.context.TestPropertySource;
  */
 class TemplateExtensionTest {
 
+    /**
+     * {@code require-environment=false} stated, not inherited from the defaults: a CI run activates the Spring
+     * profile {@code ci} for the whole JVM, and a skip test must not depend on how the run was started.
+     */
     @ApiTests
     @TestPropertySource(properties = {"template.environment=stand", "template.stand.sut-url=http://localhost:1",
-            "template.stand.db-url=jdbc:postgresql://localhost:1/sut"})
+            "template.stand.db-url=jdbc:postgresql://localhost:1/sut", "template.require-environment=false"})
     static class StandDown {
         @Test
         void anything() {
@@ -114,6 +118,7 @@ class TemplateExtensionTest {
 
     @EventTests
     @Import(NoEnvironment.class)
+    @TestPropertySource(properties = "template.require-environment=false")
     static class EventsWithoutBroker {
         @Test
         void anything() {

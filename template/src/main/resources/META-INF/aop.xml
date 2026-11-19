@@ -1,0 +1,11 @@
+<!-- Load-time weaving (-javaagent:aspectjweaver, template/pom.xml): which aspects, and which classes they may
+     touch. Only our packages: weaving every class the JVM loads would slow every run for nothing. -->
+<aspectj>
+    <aspects>
+        <aspect name="com.study.template.report.ReportingAspect"/>
+    </aspects>
+    <weaver>
+        <include within="com.study.framework..*"/>
+        <include within="com.study.template..*"/>
+    </weaver>
+</aspectj>

@@ -13,10 +13,16 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.core.env.MutablePropertySources;
+import org.springframework.core.env.StandardEnvironment;
 
 /**
  * Configuration as Spring Boot loads it for the tests (application.yml + profiles + overrides), without starting
  * any environment: beans are lazy, and choosing a provider does not start it.
+ *
+ * <p>Hermetic: the machine's system properties and environment variables are not layers here, or a run with
+ * {@code -Dspring.profiles.active=ci} (CI) or {@code SPRING_PROFILES_ACTIVE=stand} would change what "the
+ * defaults" are and fail {@link #defaultsAreHermetic} for a reason that is not in this class.
  */
 class TemplatePropertiesTest {
 
@@ -73,9 +79,18 @@ class TemplatePropertiesTest {
     private static ConfigurableApplicationContext start(String[] profiles, String... args) {
         // Command-line style arguments: the highest layer, as -D in a real run
         return new SpringApplicationBuilder(TemplateConfiguration.class)
+                .environment(new MachineIndependentEnvironment())
                 .web(WebApplicationType.NONE)
                 .profiles(profiles)
                 .logStartupInfo(false)
                 .run(args);
+    }
+
+    /** Application files and the arguments of {@link #start} only: no system properties, no environment variables. */
+    private static final class MachineIndependentEnvironment extends StandardEnvironment {
+
+        @Override
+        protected void customizePropertySources(MutablePropertySources sources) {
+        }
     }
 }

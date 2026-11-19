@@ -27,11 +27,19 @@ import com.study.template.environment.StandEnvironment;
 import com.study.template.environment.SutEnvironment;
 import com.study.template.events.EventClient;
 import com.study.template.events.users.UserEvents;
+import com.study.template.report.AllureArtifacts;
+import com.study.template.report.ArtifactFiles;
+import com.study.template.report.ArtifactListener;
+import com.study.template.report.Artifacts;
+import com.study.template.report.ReportingUserPrecondition;
+import com.study.template.report.ReportingUsersScreen;
 import com.study.template.scope.TestScope;
 import com.study.template.scope.TestScopeConfigurer;
 import com.study.template.scope.TestScoped;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -51,15 +59,20 @@ import org.springframework.core.convert.converter.Converter;
  *                                                              ── Database ── UserRows ── UserChecks
  *                                                              ── UiSettings ── BrowserPool        Clock
  *                                                              ── EventClient (one consumer thread per run)
+ *   Artifacts ── ArtifactFiles, AllureArtifacts (observers of what a failed test leaves: screenshots)
  * test (@TestScoped: one per test method, destroyed after it)
- *   Cleanup ── UserPrecondition (api | db) ── UserSteps
- *           ── UiSession (destroy = close) ── UsersScreen
+ *   Cleanup ── UserPrecondition (api | db, decorated: a report step) ── UserSteps
+ *           ── UiSession (destroy = close) ── UsersScreen (decorated: a report step per action)
  *   UserEvents (subscribed before the test body, unsubscribed after it)
  * </pre>
  *
  * Stage 2 → here: {@code b.run(...)} → {@code @Bean}; {@code b.test(...)} → {@code @Bean @TestScoped};
  * {@code c.get(X.class)} → a parameter of the method; {@code c.cleanup().own(x)} → the bean's destroy method;
  * {@code Config} + {@code env/*.properties} → {@link TemplateProperties} + {@code application-<profile>.yml}.
+ *
+ * <p>Stage 4c, the report: decorators where stage 2 has an interface (precondition, screen) are wired here;
+ * final classes without one ({@code UserSteps}, {@code ApiClient}) are reported by {@code report.ReportingAspect},
+ * woven at load time, so nothing about them is visible in this class.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(TemplateProperties.class)
@@ -162,6 +175,24 @@ public class TemplateConfiguration {
         return new EventClient(bootstrap, Map.of(), SUBSCRIBE_TIMEOUT);
     }
 
+    // ---- report: observers of the artifacts a failed test leaves (TemplateExtension publishes) ----------------
+
+    @Bean
+    ArtifactFiles artifactFiles() {
+        return new ArtifactFiles(Path.of("target", "artifacts"));
+    }
+
+    @Bean
+    AllureArtifacts allureArtifacts() {
+        return new AllureArtifacts();
+    }
+
+    /** Every {@link ArtifactListener} bean is subscribed: a new destination is one more {@code @Bean}. */
+    @Bean
+    Artifacts artifacts(List<ArtifactListener> listeners) {
+        return new Artifacts(listeners);
+    }
+
     // ---- test: one per test method -----------------------------------------------------------------------------
 
     /**
@@ -177,10 +208,12 @@ public class TemplateConfiguration {
     @Bean
     @TestScoped
     UserPrecondition userPrecondition(TemplateProperties properties, UserApi api, UserRows rows, Clock clock, Cleanup cleanup) {
-        return switch (properties.domain().userPrecondition()) {
+        TemplateProperties.Domain.Channel channel = properties.domain().userPrecondition();
+        UserPrecondition precondition = switch (channel) {
             case API -> new ApiUserPrecondition(api, cleanup);
             case DB -> new DbUserPrecondition(rows, clock, cleanup);
         };
+        return new ReportingUserPrecondition(precondition, channel.name().toLowerCase());
     }
 
     @Bean
@@ -207,7 +240,7 @@ public class TemplateConfiguration {
     @Bean
     @TestScoped
     UsersScreen usersScreen(UiSession session) {
-        return new UsersPage(session.page());
+        return new ReportingUsersScreen(new UsersPage(session.page()));
     }
 
     static final class SecretConverter implements Converter<String, Secret> {
