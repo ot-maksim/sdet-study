@@ -21,5 +21,6 @@
         <module>api</module>
         <module>db</module>
         <module>ui</module>
+        <module>domain</module>
     </modules>
 </project>
