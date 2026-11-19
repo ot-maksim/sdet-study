@@ -8,6 +8,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -70,6 +71,11 @@ final class Instances implements AutoCloseable {
         } finally {
             creating.pop();
         }
+    }
+
+    /** The object if this scope already created it; never creates (for reporting after a failure). */
+    synchronized <T> Optional<T> peek(Class<T> type) {
+        return Optional.ofNullable(created.get(type)).map(type::cast);
     }
 
     Cleanup cleanup() {

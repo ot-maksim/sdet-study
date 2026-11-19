@@ -22,5 +22,6 @@
         <module>db</module>
         <module>ui</module>
         <module>domain</module>
+        <module>tests</module>
     </modules>
 </project>

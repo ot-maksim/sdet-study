@@ -31,8 +31,9 @@ public final class UiSession implements AutoCloseable {
         return page;
     }
 
+    /** Own timeout: called after a failure, often a timeout, so the context's default would fail it too. */
     public void screenshot(Path file) {
-        page.screenshot(new Page.ScreenshotOptions().setPath(file).setFullPage(true));
+        page.screenshot(new Page.ScreenshotOptions().setPath(file).setFullPage(true).setTimeout(10_000));
     }
 
     @Override

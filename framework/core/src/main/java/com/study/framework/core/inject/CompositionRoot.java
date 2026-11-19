@@ -4,6 +4,7 @@ import com.study.framework.core.config.Config;
 import com.study.framework.core.data.Unique;
 import com.study.framework.core.lifecycle.Cleanup;
 import java.lang.System.Logger.Level;
+import java.util.Optional;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -76,6 +77,15 @@ public abstract class CompositionRoot implements ParameterResolver {
         } catch (RuntimeException e) {
             throw new ParameterResolutionException("Cannot resolve " + type.getSimpleName() + ": " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * The test's object of {@code type} if the test already asked for it, without creating it: a screenshot
+     * after a failure needs the test's browser page, but must not launch a browser for an API test.
+     */
+    protected final <T> Optional<T> createdInTest(ExtensionContext context, Class<T> type) {
+        Instances test = context.getStore(NAMESPACE).get(getClass().getName() + ":test", Instances.class);
+        return test == null ? Optional.empty() : test.peek(type);
     }
 
     private Bindings bindings() {
