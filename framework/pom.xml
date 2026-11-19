@@ -18,5 +18,6 @@
     <!-- Layers are added one by one (docs/PLAN.md, stage 2); dependencies point down to core only -->
     <modules>
         <module>core</module>
+        <module>api</module>
     </modules>
 </project>
