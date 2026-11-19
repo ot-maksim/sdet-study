@@ -24,6 +24,9 @@ of a session; tick items there when a topic is done.
   (Spring Boot test context `TemplateConfiguration`, `@TestScoped` beans, `EnvironmentProvider`: `stand` | `containers`
   via Testcontainers, default). Package `com.study.template`. Spring stays in this module: never add it to `framework/`.
 
+The yardstick for `framework/`, `review/` and `template/` — properties of a good test framework, the change scenarios
+that check them, links to where each is shown: [docs/test-framework-architecture.md](docs/test-framework-architecture.md).
+
 ## Kata format (principles/)
 1. `README.md` in the topic package: the principle in 2–3 lines, a table of packages and what to
    look at, run commands, pros/cons, when NOT to apply, "Try it yourself" exercises.

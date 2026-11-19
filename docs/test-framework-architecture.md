@@ -97,8 +97,10 @@ extracted from two real consumers, not one planned; decoy D1 in [`review/`](../r
 Properties that are shown here but not yet checked automatically:
 
 1. **Layer rules as tests.** Maven modules forbid wrong *module* dependencies; rules inside a module (a test
-   class never imports `io.restassured` or `com.microsoft.playwright`) are not checked. ArchUnit would make them
-   a failing test.
+   class never imports `io.restassured` or `com.microsoft.playwright`) are not checked in `framework/` or
+   `template/`. [`review` P10](../review/src/test/java/com/study/review/P10SutCouplingReviewTest.java) shows the
+   idea with a hand-written import scan ("the framework does not import the SUT"); ArchUnit would make such rules
+   cheap to write for every layer.
 2. **Order independence.** Isolation is shown by parallel runs, not by a random method and class order
    (`junit.jupiter.testmethod.order.default=...MethodOrderer$Random`) in CI.
 3. **Entry cost.** No measurement: give the framework to a developer who has not seen it, write down every place
