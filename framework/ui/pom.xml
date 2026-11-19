@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.study</groupId>
+        <artifactId>framework</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>framework-ui</artifactId>
+    <name>framework-ui</name>
+    <description>UI client on Playwright: browser lifecycle, desktop/mobile-web profiles, page objects and components</description>
+
+    <properties>
+        <!-- mvn -q -pl framework/ui -am compile exec:java -Dexec.args="install chromium" -->
+        <main.class>com.microsoft.playwright.CLI</main.class>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>framework-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+        </dependency>
+        <!-- Page objects are tested against the real SUT started in-process, like the api client -->
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>sut</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-testkit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
