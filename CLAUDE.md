@@ -31,7 +31,8 @@ of a session; tick items there when a topic is done.
    (extra variants such as `composition/` are fine when they teach a contrast).
 3. Tests in `principles/src/test/java` that make the difference visible (bad fails or is awkward,
    good passes). Use JUnit 5 + AssertJ; jqwik when a property says more than examples.
-4. No external systems: fakes only (FakeBrowser, in-memory repos, printed "HTTP" calls).
+4. No external systems: fakes only (FakeBrowser, in-memory repos, printed "HTTP" calls); which double when —
+   [docs/test-doubles.md](docs/test-doubles.md).
 5. A runnable `*Demo` with `main` when the behaviour is easier to see than to assert.
 
 Run: `mvn -q -pl principles compile exec:java -Dmain.class=<fqcn>`; tests: `mvn -q verify`.
