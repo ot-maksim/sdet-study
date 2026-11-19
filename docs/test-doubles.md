@@ -79,3 +79,5 @@ A double is only possible where there is a seam — an interface the code under 
 rules can be checked without any external technology (not even an in-memory database), the dependencies point
 inward (ports and adapters). If some database is needed to check a rule that has nothing to do with storage,
 the rule lives in SQL or the core talks JDBC directly: only an integration test can cover it.
+
+More, with layers vs hexagon and when an integration test is unavoidable: [ports-and-adapters.md](ports-and-adapters.md).

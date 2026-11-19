@@ -32,7 +32,8 @@ of a session; tick items there when a topic is done.
 3. Tests in `principles/src/test/java` that make the difference visible (bad fails or is awkward,
    good passes). Use JUnit 5 + AssertJ; jqwik when a property says more than examples.
 4. No external systems: fakes only (FakeBrowser, in-memory repos, printed "HTTP" calls); which double when —
-   [docs/test-doubles.md](docs/test-doubles.md).
+   [docs/test-doubles.md](docs/test-doubles.md),
+   seams for them — [docs/ports-and-adapters.md](docs/ports-and-adapters.md).
 5. A runnable `*Demo` with `main` when the behaviour is easier to see than to assert.
 
 Run: `mvn -q -pl principles compile exec:java -Dmain.class=<fqcn>`; tests: `mvn -q verify`.
