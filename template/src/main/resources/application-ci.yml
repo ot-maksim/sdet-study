@@ -1,0 +1,3 @@
+# CI: a missing environment is a broken pipeline, not a reason to be green
+template:
+  require-environment: true

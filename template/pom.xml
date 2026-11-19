@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.study</groupId>
+        <artifactId>sdet-study</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>template</artifactId>
+    <name>template</name>
+    <description>Stage 4 working template: the stage 2 layers assembled by a Spring Boot test context, the environment
+        either a running stand or started by Testcontainers</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Imported here and not in the parent: a BOM also re-versions transitive dependencies, and the other
+                 modules must not change because this one uses Spring. Versions declared in the parent
+                 (JUnit, AssertJ, Jackson, RestAssured, Postgres) still win over the imported ones. -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- The layers of stage 2, unchanged: none of them knows about Spring -->
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>framework-domain</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <!-- From RestAssured's httpclient; Spring's spring-jcl provides the same API and warns about a second copy -->
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- The wiring, the test kinds and the environments are main code of this module (as in framework/tests) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Build order only: the containers environment builds the SUT image from sut/target/sut.jar, so -am must
+             package sut first. type=pom + exclusions: nothing of the SUT lands on this module's class path -->
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>sut</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-testkit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

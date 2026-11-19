@@ -34,6 +34,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 │   ├── domain/              бизнес-шаги (facade над api/ui/db)
 │   └── tests/               E2E и интеграционные тесты
 ├── review/                  этап 3: унаследованный фреймворк с заложенными проблемами (bad) → ревью → рефакторинг (good)
+├── template/                этап 4: рабочий шаблон — те же слои framework/, сборка на Spring Boot test context, окружение stand | Testcontainers
 ├── docker-compose.yml       postgres + sut
 └── docs/                    план, ADR-заметки
 ```
@@ -50,7 +51,10 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 | 1c | KISS / DRY / DAMP / YAGNI + сводная шпаргалка «как распознать запах» |
 | 2 | SUT + учебный скелет фреймворка (при разрастании — делим на SUT и слои) |
 | 3 | Ревью намеренно плохого фреймворка |
-| 4 | Рабочий шаблон (Spring, Testcontainers, Allure, CI) |
+| 4a | Рабочий шаблон: Spring Boot test context вместо ручного DI, Testcontainers как поставщик окружения, профили ✅ |
+| 4b | Kafka: SUT публикует `user.created`, `EventClient` на настоящем брокере (Testcontainers), E2E «API → событие» |
+| 4c | Allure (listener → Observer), retry, параллельный запуск в шаблоне, CI (pipeline) |
+| 4d | Appium-реализация native mobile за `UsersScreen` |
 
 ## Этапы
 
@@ -106,12 +110,15 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 ### Этап 3. Ревью архитектуры
 - [x] Намеренно плохой мини-фреймворк → ревью → сверка → рефакторинг — [`review/`](../review/README.md), ключ — [`review/REVIEW.md`](../review/REVIEW.md). «Унаследованный» фреймворк на том же стеке против настоящего SUT: 10 проблем — `BaseTest` god class (API-тесты не стартуют без БД), статика `RestAssured.baseURI`/`Driver`/`db` (два параллельных класса — оба зелёные, оба пользователя на чужом стенде), конфиг-синглтон (ключ в файле ≠ ключ в коде → молча 30 с, `-D` после первого вызова игнорируется, пароль в логе), email из 1000 значений, уборка по префиксу (удаляет пользователя параллельного теста), сырой `Response` (NPE через два шага без 400), page object с ассертами и `sleep` (`page.content()` «находит» несозданного пользователя), SQL конкатенацией (`o'brien@…`), статический `ScenarioContext`, оракул = `UserRules` самого SUT (тавтология; архитектурный тест на импорты) — и 3 ловушки (`switch` в одном месте, fluent-цепочки, `catch (Exception)` с suppressed); тест `P01…P10` на каждую (bad видно, good проходит), good — компактный рефакторинг с `GoodRoot`, порядок рефакторинга в команде
 
-### Этап 4 (позже). Рабочий шаблон фреймворка
-- [ ] Spring / Spring Boot test context вместо ручного DI — сравнение с этапом 2
-- [ ] Testcontainers как альтернативный `EnvironmentProvider` (герметичный прогон)
-- [ ] Kafka `EventClient` на настоящем брокере (Testcontainers) + интеграционный тест — заготовка в [stage4/kafka-event-client.md](stage4/kafka-event-client.md), дизайн разобран в `principles/concurrency/events/kafka`
-- [ ] Профили окружений, Allure (listener → Observer), параллельный запуск, retry, CI
-- [ ] Appium-реализация native mobile за уже существующим интерфейсом
+### Этап 4. Рабочий шаблон фреймворка (`template/`)
+Отдельный модуль поверх **неизменённых** слоёв этапа 2: меняется только сборка; скелет с ручным DI остаётся для сравнения.
+
+- [x] 4a. Spring Boot test context вместо ручного DI — сравнение с этапом 2 — [`template/README.md`](../template/README.md), ADR [0008](adr/0008-spring-test-context.md). `TemplateConfiguration` — root на `@Bean` без сканирования и auto-config, lazy; три теста этапа 2 перенесены с изменением одной строки (`package`); чего нет в Spring, добавлено явно: `test`-scope (привязан к потоку только на время резолва параметров теста → поле / `@BeforeAll` / другой поток / singleton = понятная ошибка), `CaptiveDependencyGuard`, параметры без `@Autowired`, skip/fail по окружению, скриншот; находки: Spring выводит destroy-метод по объекту, а не по объявленному типу (`Cleanup` закрыл бы сам себя), `commons-logging` vs `spring-jcl`; Boot 3.5 (Boot 4 требует JUnit 6)
+- [x] 4a. Testcontainers как альтернативный `EnvironmentProvider` (герметичный прогон) — ADR [0009](adr/0009-environment-provider.md). `stand` (подключиться + проба) | `containers` (по умолчанию: Postgres + образ SUT из `sut/Dockerfile` в приватной сети, случайные порты, сгенерированный пароль, ~6 с); недоступно → skip с причиной, профиль `ci` → fail; `sut` как `type=pom`-зависимость ради порядка сборки
+- [x] 4a. Профили окружений — `application.yml` + слайсы `stand`, `ci`, `mobile`, `db` (комбинируются: `-Dspring.profiles.active=stand,mobile`), `TemplateProperties` на records с `ignoreUnknownFields = false` (опечатка = ошибка, как каталог этапа 2), пароль сразу в `Secret`
+- [ ] 4b. Kafka: SUT публикует `user.created` (опционально, по конфигу), `EventClient` из заготовки [stage4/kafka-event-client.md](stage4/kafka-event-client.md) на настоящем брокере (Testcontainers, ещё один контейнер в `ContainersEnvironment`) + его интеграционные тесты + E2E «создал через API → получил событие»; дизайн разобран в `principles/concurrency/events/kafka`
+- [ ] 4c. Allure (listener → Observer), retry, параллельный запуск в шаблоне, CI
+- [ ] 4d. Appium-реализация native mobile за уже существующим интерфейсом `UsersScreen` (выбор реализации — в `TemplateConfiguration`)
 
 ## Почему Testcontainers не на этапе 2
 

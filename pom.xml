@@ -18,6 +18,7 @@
         <module>sut</module>
         <module>framework</module>
         <module>review</module>
+        <module>template</module>
     </modules>
 
     <properties>
@@ -36,6 +37,9 @@
         <postgresql.version>42.7.11</postgresql.version>
         <slf4j.version>2.0.16</slf4j.version>
         <playwright.version>1.49.0</playwright.version>
+        <!-- Stage 4 (template/ only): imported as a BOM there, not here, so the other modules keep their own
+             transitive versions. Boot 3.5 = Spring 6.2 + JUnit 5 + Testcontainers 1.21; Boot 4 needs JUnit 6 -->
+        <spring-boot.version>3.5.16</spring-boot.version>
 
         <surefire.version>3.5.6</surefire.version>
         <exec-plugin.version>3.5.0</exec-plugin.version>

@@ -1,0 +1,43 @@
+# Defaults of the template. Higher layers (Spring Boot's order): application-<profile>.yml for active profiles,
+# environment variables (TEMPLATE_UI_PROFILE=mobile), system properties (-Dtemplate.ui.profile=mobile).
+# Profiles: stand (connect to a running stand), ci (fail instead of skip), mobile, db — combine them:
+#   -Dspring.profiles.active=stand,mobile
+spring:
+  main:
+    banner-mode: off
+    # Beans are built on first use, as stage 2's RUN lifetime: an API test never launches a browser
+    lazy-initialization: true
+
+template:
+  # containers: Testcontainers starts Postgres + the SUT image (hermetic, needs only Docker) | stand: connect
+  environment: containers
+  # false: environment unavailable → tests skipped with the reason; true (profile ci) → they fail
+  require-environment: false
+  stand:
+    sut-url: http://localhost:7070
+    db-url: jdbc:postgresql://localhost:5432/sut
+    db-user: sut
+    db-password: sut
+  containers:
+    postgres-image: postgres:16-alpine
+    # Dockerfile + target/sut.jar; relative to the module directory (Surefire's working directory)
+    sut-build-dir: ../sut
+  api:
+    timeout: 5s
+  ui:
+    # desktop | mobile (Chromium device emulation)
+    profile: desktop
+    headless: true
+    timeout: 5s
+    # Upper bound of browsers = UI tests at the same time; keep junit parallelism <= this
+    max-browsers: 4
+  domain:
+    # How preconditions create users: api (through the SUT) | db (direct insert)
+    user-precondition: api
+
+logging:
+  level:
+    root: WARN
+    com.study: INFO
+    org.testcontainers: INFO
+    tc: INFO
