@@ -20,6 +20,7 @@ Nothing below the assembly knows about Spring, Docker or which environment ran.
 | `report/` (4c) | `Artifacts` + `ArtifactListener` (Observer: files, Allure); `ReportingUserPrecondition`, `ReportingUsersScreen` (decorators over stage 2 interfaces); `ReportingAspect` + `META-INF/aop.xml` (steps of final classes, woven at load time) |
 | `@ApiTests` / `@UiTests` / `@E2eTests` / `@EventTests` → `@TemplateTest` | test kinds: a tag + `@SpringBootTest` + the extension; one cached context for the run; `@EventTests` also need a broker |
 | tests | `UsersApiTest`, `UsersPageTest`, `UserJourneyE2eTest` — copies of stage 2; `UserEventsE2eTest` — API/page → `user.created`; `events/EventClientTest` — the client against its own broker; `report/ReportingTest`, `report/ArtifactsTest` — what reaches the report; `scope/TestScopeTest`, `TemplatePropertiesTest`, `TemplateExtensionTest` — the mechanics |
+| `ArchitectureTest` | the layer rules as ArchUnit tests, no environment needed. The module: only the root wires `environment`/`events`/`report`/`scope`, which do not know each other; Spring only in the root and `scope`, Testcontainers only in `environment`, Allure and AspectJ only in `report`, Kafka only in `events` and `environment`; the stage 2 layers free of all of them. Assembly tests (a kind, top level): the rules of `framework/tests` — no transport, no `new` of services, no base class, exactly one kind — plus no tool of stage 4 and no Spring at all (`@TestPropertySource`, `@MockitoBean`, `@Autowired`: another configuration is another context and another environment). Component tests of the parts use their tool and are not subject to the test rules |
 
 ## Run
 
@@ -29,6 +30,7 @@ mvn -q -pl template -am verify -Dgroups=ui                        # one kind (ap
 mvn -q -pl template -am verify -Dspring.profiles.active=mobile,db # same tests, phone context, DB preconditions
 mvn -q -pl template -am verify -Dspring.profiles.active=stand     # against docker compose (see sut/README.md)
 mvn -q -pl template -am verify -Dspring.profiles.active=ci        # unavailable environment fails, not skips
+mvn -q -pl template -am test -Dtest=ArchitectureTest -Dsurefire.failIfNoSpecifiedTests=false   # layer rules only
 ```
 
 Against the compose stand with events (`SUT_KAFKA_BOOTSTRAP=kafka:19092 docker compose --profile events up -d --build --wait`):
@@ -175,6 +177,7 @@ Checked:
 | `TemplatePropertiesTest` with `-Dspring.profiles.active=stand` / `ci`, `SPRING_PROFILES_ACTIVE=stand` | green (was red: the machine's properties leaked into "the defaults"; the test now builds its context without them) |
 | the CI test step locally (`CI=true mvn -B verify -Dstand.required=true -Dspring.profiles.active=ci`, compose up) | whole reactor green after two fixes it found: `TemplateExtensionTest`'s skip cases now state `require-environment=false` (the global `ci` profile turned them into failures); `--fail-at-end` (a flaky kata stopped the reactor before template). Template 44/44; `allure:report` generated |
 | the workflow on GitHub | not run: the repository has no remote yet |
+| `ArchitectureTest` with planted violations: a test with two kinds, a base class, `@TestPropertySource`, an `ApiClient` parameter, `new Unique()`, `Allure.step`; Spring + Kafka + Testcontainers in `report`, Allure + `EnvironmentProvider` in `events`, Spring in a `com.study.framework` class | 11/11 rules fail, each naming the class, the member and the line. Finding: the first version flagged `environment` reading `TemplateProperties` — the exception has to cover its nested records (`belongToAnyOf`, not `equivalentTo`) |
 
 ## Pros and cons
 
@@ -206,13 +209,16 @@ Checked:
 
 ## Try it yourself
 
-1. Add `@Autowired UserSteps users;` as a field of `UsersApiTest` and run it. Read the message; explain why a field
-   is the wrong place in both stages.
+1. Add `@Autowired UserSteps users;` as a field of `UsersApiTest` and run it (`-Dtest=UsersApiTest`: the whole
+   module would stop at `ArchitectureTest` first). Read the message; explain why a field is the wrong place in both
+   stages. Then compare it with the message of `ArchitectureTest.testsDoNotTouchSpring`: which one comes earlier
+   in a developer's day?
 2. Make `UserChecks` depend on `Cleanup` in `TemplateConfiguration`. Which class fails, when, with what message?
    Now remove `CaptiveDependencyGuard` from `TestScopeConfigurer` and run the suite in parallel: what goes wrong, and
    how long until someone would notice?
-3. Put `@TestPropertySource(properties = "template.ui.headless=false")` on `UsersPageTest` and run the module. Count
-   the Postgres containers that start (`docker ps` during the run) and explain the time difference.
+3. Put `@TestPropertySource(properties = "template.ui.headless=false")` on `UsersPageTest` and run the module with
+   `-Dtest='Users*Test'` (`ArchitectureTest` forbids it — that is the point of the rule). Count the Postgres
+   containers that start (`docker ps` during the run) and explain the time difference.
 4. Add a third environment: `ComposeEnvironment` with Testcontainers' `ComposeContainer` over `docker-compose.yml`.
    What has to change outside `environment/`? What collides with a developer's own stand, and how would you avoid it?
 5. Replace the `switch` in `environmentProvider` with two `@Bean` methods and `@ConditionalOnProperty`. Mistype the
@@ -233,6 +239,8 @@ Checked:
     in Retries and in the flaky filter. Then remove the agent from `argLine` and run again: what is red now?
 12. Add a third `ArtifactListener` that writes the page's HTML of a failed UI test (`page.content()`). What has to
     change in `TemplateExtension`, and what in `TemplateConfiguration`?
+13. `ArchitectureTest` is a copy of the one in `framework/tests` with additions. Extract the shared rules into a
+    module both use. What does it cost, what does it save, and at which third consumer would you do it for real?
 
 ## Decisions
 

@@ -26,7 +26,7 @@ opinion (an architectural *fitness function*). The decisions behind each one go 
 | **Parallelizability** | Parallel execution is switched on | No mutable static state; every dependency has an owner and a lifetime (run or test); the result equals the sequential one | [`SutComposition`](../framework/tests/src/main/java/com/study/framework/tests/SutComposition.java) (RUN vs TEST scopes), [`BrowserPool`](../framework/ui/src/main/java/com/study/framework/ui/BrowserPool.java) (a browser is leased, never shared), [`ParallelUiTest`](../framework/ui/src/test/java/com/study/framework/ui/users/ParallelUiTest.java) (checks the tests really overlapped), [`CaptiveDependencyGuard`](../template/src/main/java/com/study/template/scope/CaptiveDependencyGuard.java), parallel guard in ADR [0011](adr/0011-report-retry-ci.md) |
 | **Diagnosability** | A test fails at night | The report alone says what broke, where, and whose it is (product vs infrastructure), without a rerun or a debugger | [`ApiResponseAssert`](../framework/api/src/main/java/com/study/framework/api/ApiResponseAssert.java) and [`ApiException`](../framework/api/src/main/java/com/study/framework/api/ApiException.java) carry the whole exchange; stand probe in [`SutComposition`](../framework/tests/src/main/java/com/study/framework/tests/SutComposition.java) (stand down → skip or fail with the reason, not 50 red tests); screenshot on failure; Allure steps by [decorator](../template/src/main/java/com/study/template/report/ReportingUsersScreen.java) and [aspect](../template/src/main/java/com/study/template/report/ReportingAspect.java) |
 | **Trustworthy signal** | A test fails once in twenty runs | A flake is visible and costs nothing locally; a retry never hides it | Retry only in CI, only once, reported as `Flaky` in the job summary ([ADR 0011](adr/0011-report-retry-ci.md), [`tests.yml`](../.github/workflows/tests.yml)) |
-| **Environment independence** | Move from one stand to another, or to containers | A config value or profile changes; tests and clients do not | Layered [`Config`](../framework/core/src/main/java/com/study/framework/core/config/Config.java) (unknown key fails the run, [`Secret`](../framework/core/src/main/java/com/study/framework/core/config/Secret.java) is masked), [`EnvironmentProvider`](../template/src/main/java/com/study/template/environment/EnvironmentProvider.java): `stand` \| `containers` |
+| **Environment independence** | Move from one stand to another, or to containers | A config value or profile changes; tests and clients do not; Testcontainers lives in `environment/` only (`template` `ArchitectureTest`) | Layered [`Config`](../framework/core/src/main/java/com/study/framework/core/config/Config.java) (unknown key fails the run, [`Secret`](../framework/core/src/main/java/com/study/framework/core/config/Secret.java) is masked), [`EnvironmentProvider`](../template/src/main/java/com/study/template/environment/EnvironmentProvider.java): `stand` \| `containers` |
 | **Extensibility** | A new channel (Kafka, native mobile) or a new way to prepare data | Existing layers are only added to, never edited; the new implementation passes the same contract test | [`UserPrecondition`](../framework/domain/src/main/java/com/study/framework/domain/UserPrecondition.java) (API or DB) + [`UserPreconditionContract`](../framework/domain/src/test/java/com/study/framework/domain/UserPreconditionContract.java); [`UsersScreen`](../framework/ui/src/main/java/com/study/framework/ui/users/UsersScreen.java) + `UsersScreenContract` (desktop, mobile web; native next); events in [ADR 0010](adr/0010-events-kafka.md) |
 | **Low entry cost** | A developer writes their first test | Done without help from the framework's authors: one annotation, parameters, domain calls | A test kind is an annotation ([`@ApiTests`](../framework/tests/src/main/java/com/study/framework/tests/ApiTests.java)), dependencies are test parameters; not checked here yet (see *Gaps*) |
 
@@ -54,7 +54,8 @@ opinion (an architectural *fitness function*). The decisions behind each one go 
 7. **Assertions at the domain level with context**: the failure message is the first line of the investigation.
 8. **Cross-cutting concerns by observers, extensions and decorators**, not by a base class: report, screenshots,
    retry, stand checks are properties of the assembly, and the layers do not know the report tool
-   ([ADR 0011](adr/0011-report-retry-ci.md)).
+   ([ADR 0011](adr/0011-report-retry-ci.md); checked by `template` `ArchitectureTest`: Allure and AspectJ only in
+   `report`, none of the stage 4 tools in `com.study.framework`).
 9. **One typed configuration** per run, validated at start, read into settings records by the module that owns
    the keys ([ADR 0002](adr/0002-layered-config.md)).
 
@@ -98,11 +99,12 @@ extracted from two real consumers, not one planned; decoy D1 in [`review/`](../r
 
 Properties that are shown here but not yet checked automatically:
 
-1. **Layer rules in `template/`.** In `framework/` they are tests now:
-   [`ArchitectureTest`](../framework/tests/src/test/java/com/study/framework/tests/ArchitectureTest.java)
-   (ArchUnit) checks the layers and what a test may touch, beyond what Maven modules can express. `template/`
-   has no such test yet: there the rules would add Spring (no `ApplicationContext` in a test, no `@Autowired`
-   field) and the reporting seams (Allure only in `report`).
+1. **Shared layer rules.** Both assemblies check their layers with ArchUnit:
+   [`framework/tests`](../framework/tests/src/test/java/com/study/framework/tests/ArchitectureTest.java) (layers,
+   what a test may touch) and [`template`](../template/src/test/java/com/study/template/ArchitectureTest.java)
+   (the same test rules, plus no Spring in a test, each stage 4 tool confined to its package, stage 2 free of
+   them). The second is a copy with additions, on purpose: two consumers, different assemblies. A shared rules
+   module is the step for a third one.
    [`review` P10](../review/src/test/java/com/study/review/P10SutCouplingReviewTest.java) shows the same idea
    without a library, as a hand-written import scan.
 2. **Order independence.** Isolation is shown by parallel runs, not by a random method and class order

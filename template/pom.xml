@@ -122,6 +122,12 @@
             <artifactId>junit-platform-testkit</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Layer rules of the assembly as tests: ArchitectureTest -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
