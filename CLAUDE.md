@@ -14,7 +14,8 @@ of a session; tick items there when a topic is done.
 ## Modules
 - `basics/` — Java basics (init order, builder).
 - `principles/` — katas, one package per topic: `com.study.principles.<topic>[.<subtopic>]`.
-- `sut/`, `framework/` — stage 2, not created yet; add a module only when its stage starts.
+- `sut/` — system under test (users REST + HTML, Postgres); stand via `docker-compose.yml`. See `sut/README.md`.
+- `framework/` — stage 2, not created yet.
 
 ## Kata format (principles/)
 1. `README.md` in the topic package: the principle in 2–3 lines, a table of packages and what to

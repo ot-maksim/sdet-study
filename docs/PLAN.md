@@ -93,7 +93,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
   - [x] Сводная шпаргалка «как распознать запах» по всем каталам этапа 1 — [`principles/SMELLS.md`](../principles/SMELLS.md): симптом → как заметить (grep / вопрос на ревью) → принцип → что вместо → катал; разделы по месту (тело теста, данные и жизненный цикл, page objects, клиенты и интерфейсы, структура фреймворка, значения и состояние), «не запахи», принципы в напряжении, один проход grep'ами
 
 ### Этап 2. Применение: SUT + учебный скелет фреймворка
-- [ ] `sut/`: Javalin, REST `/users`, HTML-страница со списком, Postgres через JDBC, `docker compose`
+- [x] `sut/`: Javalin, REST `/api/users`, HTML-страница `/users` (список, форма, удаление; на телефоне — карточки и свёрнутая форма), Postgres через JDBC, `docker compose` (postgres + sut, healthcheck'и); `UserRepositoryContract` для in-memory и JDBC — [`sut/README.md`](../sut/README.md)
 - [ ] `framework/core`: конфиг, Composition Root вручную (JUnit 5 extension)
 - [ ] `framework/api`: RestAssured-клиент (deep interface, DTO + builder)
 - [ ] `framework/db`: JDBC-репозиторий

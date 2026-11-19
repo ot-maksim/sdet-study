@@ -1,0 +1,44 @@
+# The test stand: Postgres + the SUT. The framework only connects to it (URLs in its config);
+# it does not start or own the environment (see docs/PLAN.md, "Why Testcontainers is not in stage 2").
+#
+#   mvn -q -pl sut -am package -DskipTests
+#   docker compose up -d --build --wait
+#   docker compose down -v          # -v drops the data volume
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sut
+      POSTGRES_USER: sut
+      POSTGRES_PASSWORD: sut
+    ports:
+      - "5432:5432"          # tests read and seed the database directly (framework/db)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sut -d sut"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  sut:
+    build: ./sut
+    environment:
+      SUT_PORT: "7070"
+      SUT_STORAGE: postgres
+      SUT_DB_URL: jdbc:postgresql://postgres:5432/sut
+      SUT_DB_USER: sut
+      SUT_DB_PASSWORD: sut
+    ports:
+      - "7070:7070"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/7070 && printf \"GET /health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q UP <&3'"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+volumes:
+  pgdata:
