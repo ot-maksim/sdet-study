@@ -20,7 +20,7 @@ opinion (an architectural *fitness function*). The decisions behind each one go 
 
 | Property | Scenario | Check | In this repo |
 |---|---|---|---|
-| **Expressiveness** | A test reads as a specification of behaviour | Test bodies speak the domain; tests never touch the transport (HTTP, SQL, locators) | [`framework/tests/.../UsersApiTest`](../framework/tests/src/test/java/com/study/framework/tests/UsersApiTest.java): `users.aNewUser().withAge(17)`, `isRejectedWith(400, "age_too_low")`, `checks.assertNotStored(...)` |
+| **Expressiveness** | A test reads as a specification of behaviour | Test bodies speak the domain; tests never touch the transport (HTTP, SQL, locators) — `ArchitectureTest.testsDoNotTouchTheTransport` | [`framework/tests/.../UsersApiTest`](../framework/tests/src/test/java/com/study/framework/tests/UsersApiTest.java): `users.aNewUser().withAge(17)`, `isRejectedWith(400, "age_too_low")`, `checks.assertNotStored(...)` |
 | **Locality of change** | An endpoint is renamed, a locator changes, a field becomes required, the assembly changes | One edit in one place (client, page object, builder default, root); zero edits in tests | The test bodies in [`framework/tests`](../framework/tests/src/test/java/com/study/framework/tests/UsersApiTest.java) and [`template`](../template/src/test/java/com/study/template/UsersApiTest.java) are identical: hand-made DI → Spring, compose stand → Testcontainers, plus Allure, and no test changed |
 | **Isolation and determinism** | A test runs alone, in any order, next to others on a shared stand | It creates its own data and removes only that; it finds its data by key, never by position or count | [`Unique`](../framework/core/src/main/java/com/study/framework/core/data/Unique.java) (run id + counter), [`Cleanup`](../framework/core/src/main/java/com/study/framework/core/lifecycle/Cleanup.java) ("register the undo right after the do"), [`UsersScreen`](../framework/ui/src/main/java/com/study/framework/ui/users/UsersScreen.java) (find by email) |
 | **Parallelizability** | Parallel execution is switched on | No mutable static state; every dependency has an owner and a lifetime (run or test); the result equals the sequential one | [`SutComposition`](../framework/tests/src/main/java/com/study/framework/tests/SutComposition.java) (RUN vs TEST scopes), [`BrowserPool`](../framework/ui/src/main/java/com/study/framework/ui/BrowserPool.java) (a browser is leased, never shared), [`ParallelUiTest`](../framework/ui/src/test/java/com/study/framework/ui/users/ParallelUiTest.java) (checks the tests really overlapped), [`CaptiveDependencyGuard`](../template/src/main/java/com/study/template/scope/CaptiveDependencyGuard.java), parallel guard in ADR [0011](adr/0011-report-retry-ci.md) |
@@ -33,8 +33,10 @@ opinion (an architectural *fitness function*). The decisions behind each one go 
 ## Structural rules that give these properties
 
 1. **Layers with one-way dependencies**: tests → domain (steps, preconditions, checks) → clients (api, ui, db) →
-   core. Tests do not see the transport. Here the rule is enforced by Maven modules: a forbidden import is a
-   compile error, not a review comment ([ADR 0006](adr/0006-domain-layer.md), [0007](adr/0007-test-assembly.md)).
+   core. Tests do not see the transport. Here Maven modules make a forbidden module dependency a compile error,
+   and [`ArchitectureTest`](../framework/tests/src/test/java/com/study/framework/tests/ArchitectureTest.java)
+   makes the rest a failing test: the layers in one picture, and what a test inside the assembly module may touch
+   ([ADR 0006](adr/0006-domain-layer.md), [0007](adr/0007-test-assembly.md)).
 2. **One composition root.** Every `new` of the framework is in one place; tests only declare what they need.
    No singletons, no service locator in tests ([ADR 0001](adr/0001-composition-root-by-hand.md),
    [`SutComposition`](../framework/tests/src/main/java/com/study/framework/tests/SutComposition.java); the same role
@@ -96,11 +98,13 @@ extracted from two real consumers, not one planned; decoy D1 in [`review/`](../r
 
 Properties that are shown here but not yet checked automatically:
 
-1. **Layer rules as tests.** Maven modules forbid wrong *module* dependencies; rules inside a module (a test
-   class never imports `io.restassured` or `com.microsoft.playwright`) are not checked in `framework/` or
-   `template/`. [`review` P10](../review/src/test/java/com/study/review/P10SutCouplingReviewTest.java) shows the
-   idea with a hand-written import scan ("the framework does not import the SUT"); ArchUnit would make such rules
-   cheap to write for every layer.
+1. **Layer rules in `template/`.** In `framework/` they are tests now:
+   [`ArchitectureTest`](../framework/tests/src/test/java/com/study/framework/tests/ArchitectureTest.java)
+   (ArchUnit) checks the layers and what a test may touch, beyond what Maven modules can express. `template/`
+   has no such test yet: there the rules would add Spring (no `ApplicationContext` in a test, no `@Autowired`
+   field) and the reporting seams (Allure only in `report`).
+   [`review` P10](../review/src/test/java/com/study/review/P10SutCouplingReviewTest.java) shows the same idea
+   without a library, as a hand-written import scan.
 2. **Order independence.** Isolation is shown by parallel runs, not by a random method and class order
    (`junit.jupiter.testmethod.order.default=...MethodOrderer$Random`) in CI.
 3. **Entry cost.** No measurement: give the framework to a developer who has not seen it, write down every place

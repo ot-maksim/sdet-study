@@ -37,6 +37,8 @@
         <postgresql.version>42.7.11</postgresql.version>
         <slf4j.version>2.0.16</slf4j.version>
         <playwright.version>1.49.0</playwright.version>
+        <!-- Architecture rules as tests (framework/tests: layer rules Maven modules cannot express) -->
+        <archunit.version>1.4.1</archunit.version>
         <!-- Stage 4b: the SUT's producer and the template's EventClient; the same version Boot 3.5.16 manages -->
         <kafka.version>3.9.2</kafka.version>
         <!-- Stage 4 (template/ only): imported as a BOM there, not here, so the other modules keep their own
@@ -133,6 +135,12 @@
                 <groupId>com.microsoft.playwright</groupId>
                 <artifactId>playwright</artifactId>
                 <version>${playwright.version}</version>
+            </dependency>
+            <!-- Its own JUnit Platform engine runs @ArchTest fields; no extra Surefire setup -->
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
             </dependency>
             <!-- Stage 4c, template/ only: the report listener and the weaver of the reporting aspect -->
             <dependency>
