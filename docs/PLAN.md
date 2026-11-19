@@ -94,7 +94,7 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 
 ### Этап 2. Применение: SUT + учебный скелет фреймворка
 - [x] `sut/`: Javalin, REST `/api/users`, HTML-страница `/users` (список, форма, удаление; на телефоне — карточки и свёрнутая форма), Postgres через JDBC, `docker compose` (postgres + sut, healthcheck'и); `UserRepositoryContract` для in-memory и JDBC — [`sut/README.md`](../sut/README.md)
-- [ ] `framework/core`: конфиг, Composition Root вручную (JUnit 5 extension)
+- [x] `framework/core`: конфиг слоями (sysprop → env var → `env/<env>.properties` → `framework.properties` модулей; каталог ключей ловит опечатки, все проблемы разом, `Secret`), `Scope`/`Cleanup` (undo в обратном порядке, все ошибки), механика Composition Root (`CompositionRoot` + `Bindings`: RUN/TEST, лениво, защита от `@BeforeAll`, captive dependency, циклов), `Unique` — [`framework/core/README.md`](../framework/core/README.md), ADR [0001](adr/0001-composition-root-by-hand.md), [0002](adr/0002-layered-config.md). Сам root (привязки модулей) — в `framework/tests`
 - [ ] `framework/api`: RestAssured-клиент (deep interface, DTO + builder)
 - [ ] `framework/db`: JDBC-репозиторий
 - [ ] `framework/ui`: Playwright, Page Object + Components, web/mobile-web профили, заглушка native

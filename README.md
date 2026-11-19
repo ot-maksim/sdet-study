@@ -6,6 +6,7 @@
 |---|---|
 | `basics/` | Порядок инициализации классов и объектов (`com.study.init`), паттерн Builder (`com.study.patterns.builder`) |
 | `principles/` | Каталы по принципам: `com.study.principles.<topic>.{bad,good}`, README в пакете темы |
+| `framework/` | Учебный скелет фреймворка: `core` (конфиг, жизненный цикл, механика composition root) — [framework/core/README.md](framework/core/README.md); решения — [docs/adr](docs/adr) |
 | `sut/` | Тестируемое приложение: пользователи, REST + HTML на Javalin, Postgres через JDBC — [sut/README.md](sut/README.md) |
 
 Требования: Java 17, Maven 3.9+; для стенда — Docker.

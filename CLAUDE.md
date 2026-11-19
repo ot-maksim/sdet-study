@@ -15,7 +15,9 @@ of a session; tick items there when a topic is done.
 - `basics/` — Java basics (init order, builder).
 - `principles/` — katas, one package per topic: `com.study.principles.<topic>[.<subtopic>]`.
 - `sut/` — system under test (users REST + HTML, Postgres); stand via `docker-compose.yml`. See `sut/README.md`.
-- `framework/` — stage 2, not created yet.
+- `framework/` — stage 2 skeleton, one Maven module per layer (`framework/<layer>`, artifact `framework-<layer>`,
+  package `com.study.framework.<layer>`); clients (`api`, `db`, `ui`) depend on `core` only, `domain` on clients, `tests` on all; the composition root (bindings of
+  all modules) lives in `framework/tests`. Key decisions as ADRs in `docs/adr/`.
 
 ## Kata format (principles/)
 1. `README.md` in the topic package: the principle in 2–3 lines, a table of packages and what to

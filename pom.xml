@@ -16,6 +16,7 @@
         <module>basics</module>
         <module>principles</module>
         <module>sut</module>
+        <module>framework</module>
     </modules>
 
     <properties>
