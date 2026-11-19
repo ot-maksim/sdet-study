@@ -6,8 +6,10 @@ taught on a fake broker in the `principles/concurrency/events/kafka` kata
 ([README](../../principles/src/main/java/com/study/principles/concurrency/events/kafka/README.md)). This note keeps the
 Kafka-specific client until stage 4, when a real broker (Testcontainers) is allowed.
 
-**Status:** compiled only against stubs of the `kafka-clients` 3.x signatures (written for 3.9.1).
-**Never run against a real broker**: the first task is the integration test below.
+**Status: moved (stage 4b).** The client lives in `template/src/main/java/com/study/template/events/`, tested
+against a real broker in `template/.../events/EventClientTest`. The broker found two bugs in the code below (a late
+listener on an assigned topic got older events; a just-created topic was "not found") — see
+[ADR 0010](../adr/0010-events-kafka.md). The code below is kept as it was, for comparison.
 
 ## What to reuse from the kata
 

@@ -18,8 +18,12 @@ template:
     db-url: jdbc:postgresql://localhost:5432/sut
     db-user: sut
     db-password: sut
+    # Empty: the stand has no broker, event tests are skipped. Compose with events: localhost:9094 (sut/README.md)
+    kafka-bootstrap: ""
   containers:
     postgres-image: postgres:16-alpine
+    # The GraalVM build of the broker: starts in ~1 s; the JVM image apache/kafka works the same, slower
+    kafka-image: apache/kafka-native:3.9.1
     # Dockerfile + target/sut.jar; relative to the module directory (Surefire's working directory)
     sut-build-dir: ../sut
   api:
@@ -31,6 +35,8 @@ template:
     timeout: 5s
     # Upper bound of browsers = UI tests at the same time; keep junit parallelism <= this
     max-browsers: 4
+  events:
+    timeout: 10s
   domain:
     # How preconditions create users: api (through the SUT) | db (direct insert)
     user-precondition: api

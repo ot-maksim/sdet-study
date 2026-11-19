@@ -65,6 +65,11 @@ class TemplateExtensionTest {
                 public SutEnvironment start() {
                     throw new AssertionError("the guard must not need the environment");
                 }
+
+                @Override
+                public Optional<String> eventsUnavailable() {
+                    return Optional.of("no broker in this fake");
+                }
             };
         }
     }
@@ -104,6 +109,36 @@ class TemplateExtensionTest {
     void unavailableStandFailsWhenRequired() {
         execute(StandDownInCi.class).allEvents().assertThatEvents()
                 .haveExactly(1, container(finishedWithFailure(message(m -> m.contains("Stand is down")
+                        && m.endsWith("(template.require-environment=true)")))));
+    }
+
+    @EventTests
+    @Import(NoEnvironment.class)
+    static class EventsWithoutBroker {
+        @Test
+        void anything() {
+        }
+    }
+
+    @EventTests
+    @Import(NoEnvironment.class)
+    @TestPropertySource(properties = "template.require-environment=true")
+    static class EventsWithoutBrokerInCi {
+        @Test
+        void anything() {
+        }
+    }
+
+    @Test
+    void environmentWithoutBrokerSkipsEventTests() {
+        execute(EventsWithoutBroker.class).allEvents().assertThatEvents()
+                .haveExactly(1, container(skippedWithReason(reason -> reason.startsWith("no broker in this fake"))));
+    }
+
+    @Test
+    void environmentWithoutBrokerFailsEventTestsWhenRequired() {
+        execute(EventsWithoutBrokerInCi.class).allEvents().assertThatEvents()
+                .haveExactly(1, container(finishedWithFailure(message(m -> m.contains("no broker in this fake")
                         && m.endsWith("(template.require-environment=true)")))));
     }
 

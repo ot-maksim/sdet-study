@@ -25,10 +25,14 @@ import com.study.template.environment.ContainersEnvironment;
 import com.study.template.environment.EnvironmentProvider;
 import com.study.template.environment.StandEnvironment;
 import com.study.template.environment.SutEnvironment;
+import com.study.template.events.EventClient;
+import com.study.template.events.users.UserEvents;
 import com.study.template.scope.TestScope;
 import com.study.template.scope.TestScopeConfigurer;
 import com.study.template.scope.TestScoped;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBinding;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -46,9 +50,11 @@ import org.springframework.core.convert.converter.Converter;
  *   EnvironmentProvider (stand | containers) ── SutEnvironment ── ApiClient ── UserApi     Unique ── NewUsers
  *                                                              ── Database ── UserRows ── UserChecks
  *                                                              ── UiSettings ── BrowserPool        Clock
+ *                                                              ── EventClient (one consumer thread per run)
  * test (@TestScoped: one per test method, destroyed after it)
  *   Cleanup ── UserPrecondition (api | db) ── UserSteps
  *           ── UiSession (destroy = close) ── UsersScreen
+ *   UserEvents (subscribed before the test body, unsubscribed after it)
  * </pre>
  *
  * Stage 2 → here: {@code b.run(...)} → {@code @Bean}; {@code b.test(...)} → {@code @Bean @TestScoped};
@@ -58,6 +64,9 @@ import org.springframework.core.convert.converter.Converter;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(TemplateProperties.class)
 public class TemplateConfiguration {
+
+    /** How long a subscription may take (assign, find the end of every partition) before the test fails. */
+    private static final Duration SUBSCRIBE_TIMEOUT = Duration.ofSeconds(30);
 
     /** Static: a bean factory post-processor must exist before this class's own beans. */
     @Bean
@@ -142,6 +151,17 @@ public class TemplateConfiguration {
         return Clock.systemUTC();
     }
 
+    /**
+     * One Kafka consumer (and its poll thread) for the run, shared by parallel tests; {@code close} inferred.
+     * Only {@code @EventTests} get here: for the others the environment's broker is not checked and may be missing.
+     */
+    @Bean
+    EventClient eventClient(SutEnvironment environment) {
+        String bootstrap = environment.kafkaBootstrap().orElseThrow(() -> new IllegalStateException(
+                "The environment has no Kafka (" + environment + "): a test that reads events must be @EventTests"));
+        return new EventClient(bootstrap, Map.of(), SUBSCRIBE_TIMEOUT);
+    }
+
     // ---- test: one per test method -----------------------------------------------------------------------------
 
     /**
@@ -174,6 +194,13 @@ public class TemplateConfiguration {
     @TestScoped
     UiSession uiSession(BrowserPool pool, UiSettings settings) {
         return new UiSession(pool, BrowserProfiles.get(settings.profile()), settings);
+    }
+
+    /** {@code close} inferred and registered with the test scope: the subscription ends with the test. */
+    @Bean
+    @TestScoped
+    UserEvents userEvents(EventClient client, TemplateProperties properties) {
+        return new UserEvents(client, properties.events().timeout());
     }
 
     /** A native implementation (stage 4d, Appium) would be chosen here, like the precondition channel. */

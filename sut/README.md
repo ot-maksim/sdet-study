@@ -10,7 +10,8 @@ a responsive page.
 | `users` | `NewUser` (request, nullable fields) → `UserRules` (validation + normalization) → `ValidUser` → `UserRepository` → `User`; `UserService` — the use cases; `InMemoryUserRepository` |
 | `db` | `JdbcUserRepository` (plain JDBC, email uniqueness from the DB, SQLState `23505` → `email_taken`), `Schema` applies `schema.sql` on start |
 | `web` | `UsersApi` (`/api/users`), `UsersPage` (`/users`, server-rendered HTML), `ApiError` |
-| root | `SutApp` — builds Javalin around a `UserService`; `SutMain` — config from env, picks the storage |
+| `events` | `KafkaUserEvents` — the Kafka adapter of the `users.UserEvents` port (stage 4b); off unless `SUT_KAFKA_BOOTSTRAP` is set |
+| root | `SutApp` — builds Javalin around a `UserService`; `SutMain` — config from env, picks the storage and the events adapter |
 
 ## Interface (what tests may rely on)
 
@@ -44,6 +45,12 @@ difference the framework's web / mobile-web profiles have to absorb.
 
 Database: table `users (id bigserial, name, email unique, age check >= 18, country char(2), created_at timestamptz)`.
 
+Events (only with `SUT_KAFKA_BOOTSTRAP`): after a user is stored, `user.created` goes to topic `users`
+(3 partitions, created by the SUT on start) — key = user id, value = the user JSON as above, header
+`event-type: user.created`. Fire-and-forget: the `201` does not wait for the broker, a failed send is only logged
+(no outbox: the user exists, the event is lost). A user inserted straight into the database (the framework's
+DB precondition) is not announced — the SUT never saw it.
+
 ## Run
 
 The stand (Postgres + SUT in Docker), as the framework will see it:
@@ -57,7 +64,15 @@ docker compose down -v
 
 Without Docker, in memory: `SUT_STORAGE=memory mvn -q -pl sut compile exec:java`.
 Environment: `SUT_PORT` (7070), `SUT_STORAGE` (`postgres` | `memory`), `SUT_DB_URL`
-(`jdbc:postgresql://localhost:5432/sut`), `SUT_DB_USER` / `SUT_DB_PASSWORD` (`sut`).
+(`jdbc:postgresql://localhost:5432/sut`), `SUT_DB_USER` / `SUT_DB_PASSWORD` (`sut`), `SUT_KAFKA_BOOTSTRAP`
+(unset: no events).
+
+With a broker (compose profile `events`, Kafka for tests at `localhost:9094`):
+
+```
+SUT_KAFKA_BOOTSTRAP=kafka:19092 docker compose --profile events up -d --build --wait
+docker compose --profile events down -v
+```
 
 Tests: `mvn -q -pl sut test` — rules, the REST API and the page against an in-memory SUT on a free port with
 a fixed clock. `UserRepositoryContract` runs for both repositories; the JDBC one only with a database:

@@ -18,7 +18,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "template", ignoreUnknownFields = false)
 public record TemplateProperties(EnvironmentKind environment, boolean requireEnvironment,
-                                 Stand stand, Containers containers, Api api, Ui ui, Domain domain) {
+                                 Stand stand, Containers containers, Api api, Ui ui, Domain domain, Events events) {
 
     public TemplateProperties {
         Objects.requireNonNull(environment, "template.environment is missing");
@@ -27,6 +27,7 @@ public record TemplateProperties(EnvironmentKind environment, boolean requireEnv
         Objects.requireNonNull(api, "template.api is missing");
         Objects.requireNonNull(ui, "template.ui is missing");
         Objects.requireNonNull(domain, "template.domain is missing");
+        Objects.requireNonNull(events, "template.events is missing");
     }
 
     /** Where the SUT comes from. An enum, not a free string: a typo fails binding with the allowed values. */
@@ -37,18 +38,25 @@ public record TemplateProperties(EnvironmentKind environment, boolean requireEnv
         CONTAINERS
     }
 
-    /** A running stand. The password is a {@link Secret} already at binding: it never sits in a String field of a record that may be logged. */
-    public record Stand(URI sutUrl, String dbUrl, String dbUser, Secret dbPassword) {
+    /**
+     * A running stand. The password is a {@link Secret} already at binding: it never sits in a String field of a
+     * record that may be logged. {@code kafkaBootstrap} empty: the stand has no broker, event tests are skipped.
+     */
+    public record Stand(URI sutUrl, String dbUrl, String dbUser, Secret dbPassword, String kafkaBootstrap) {
     }
 
     /** {@code sutBuildDir}: the SUT's Dockerfile and {@code target/sut.jar}; in real life, an image from a registry instead. */
-    public record Containers(String postgresImage, Path sutBuildDir) {
+    public record Containers(String postgresImage, String kafkaImage, Path sutBuildDir) {
     }
 
     public record Api(Duration timeout) {
     }
 
     public record Ui(String profile, boolean headless, Duration timeout, int maxBrowsers) {
+    }
+
+    /** {@code timeout}: how long a test waits for an event it expects; the upper bound, not a pause. */
+    public record Events(Duration timeout) {
     }
 
     public record Domain(Channel userPrecondition) {

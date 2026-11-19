@@ -18,4 +18,11 @@ public interface EnvironmentProvider {
 
     /** Starts what has to be started (once) and says where the SUT is. */
     SutEnvironment start();
+
+    /**
+     * Why event tests ({@code @EventTests}) cannot run here although the rest can: the environment has no broker
+     * or it does not answer. Asked only for event tests, after {@link #unavailable()}. A capability, not a second
+     * environment: a stand without Kafka still runs every other test.
+     */
+    Optional<String> eventsUnavailable();
 }

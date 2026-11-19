@@ -17,16 +17,25 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * A hermetic environment owned by the run: Postgres and the SUT image on a private Docker network, random host
- * ports, a fresh database. Needs only Docker — no stand, no fixed ports, two runs side by side do not collide.
+ * A hermetic environment owned by the run: Postgres, a Kafka broker and the SUT image on a private Docker network,
+ * random host ports, a fresh database and empty topics. Needs only Docker — no stand, no fixed ports, two runs side
+ * by side do not collide.
  *
  * <pre>
  *   host (tests) ──localhost:random──▶ sut:7070 ──postgres:5432──▶ postgres     (private network)
- *        └────────────localhost:random──────────────────────────────▶ postgres  (framework/db reads it directly)
+ *        │                                  └─────kafka:19092────▶ kafka        (SUT publishes user events)
+ *        ├────────────localhost:random──────────────────────────────▶ postgres  (framework/db reads it directly)
+ *        └────────────localhost:random──────────────────────────────▶ kafka     (EventClient reads the topic)
  * </pre>
+ *
+ * Kafka has two listeners: one advertised to the private network for the SUT ({@code kafka:19092}), one mapped to
+ * the host for the tests. Auto-creation of topics is off: the SUT creates its own on start, as in production the
+ * platform team would.
  *
  * Started once per Spring context (the context is cached for the whole run), stopped when the context closes;
  * Testcontainers' Ryuk removes the containers even if the JVM is killed.
@@ -35,12 +44,14 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
 
     private static final Logger LOG = LoggerFactory.getLogger(ContainersEnvironment.class);
     private static final int SUT_PORT = 7070;
+    private static final String KAFKA_IN_NETWORK = "kafka:19092";
 
     private final TemplateProperties.Containers settings;
     private volatile Optional<String> unavailable;
 
     private Network network;
     private PostgreSQLContainer<?> postgres;
+    private KafkaContainer kafka;
     private GenericContainer<?> sut;
     private SutEnvironment started;
 
@@ -73,7 +84,12 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
                 .withDatabaseName("sut")
                 .withUsername("sut")
                 .withPassword(password);
-        postgres.start();
+        kafka = new KafkaContainer(DockerImageName.parse(settings.kafkaImage()).asCompatibleSubstituteFor("apache/kafka"))
+                .withNetwork(network)
+                .withListener(KAFKA_IN_NETWORK)
+                .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false");
+        // Independent of each other: started together, the slower one sets the pace
+        Startables.deepStart(postgres, kafka).join();
 
         Path dir = settings.sutBuildDir();
         // Only the two files the Dockerfile needs go to the build context, not the whole module with target/
@@ -86,14 +102,16 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
                         "SUT_STORAGE", "postgres",
                         "SUT_DB_URL", "jdbc:postgresql://postgres:5432/sut",   // the alias: inside the network
                         "SUT_DB_USER", "sut",
-                        "SUT_DB_PASSWORD", password))
+                        "SUT_DB_PASSWORD", password,
+                        "SUT_KAFKA_BOOTSTRAP", KAFKA_IN_NETWORK))
                 .withExposedPorts(SUT_PORT)
                 .waitingFor(Wait.forHttp("/health").forStatusCode(200).withStartupTimeout(Duration.ofSeconds(60)));
         sut.start();
 
         started = new SutEnvironment("containers",
                 URI.create("http://" + sut.getHost() + ":" + sut.getMappedPort(SUT_PORT)),
-                postgres.getJdbcUrl(), postgres.getUsername(), Secret.of(password));
+                postgres.getJdbcUrl(), postgres.getUsername(), Secret.of(password),
+                Optional.of(kafka.getBootstrapServers()));
         LOG.info("Environment started in {} ms: {}", (System.nanoTime() - begin) / 1_000_000, started);
         return started;
     }
@@ -102,7 +120,7 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
     @Override
     public synchronized void close() {
         // Reverse order of start; each one even if the previous failed
-        for (AutoCloseable resource : new AutoCloseable[] {sut, postgres, network}) {
+        for (AutoCloseable resource : new AutoCloseable[] {sut, kafka, postgres, network}) {
             if (resource != null) {
                 try {
                     resource.close();
@@ -111,6 +129,12 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
                 }
             }
         }
+    }
+
+    /** The broker is part of the hermetic environment: whenever the rest is available, events are too. */
+    @Override
+    public Optional<String> eventsUnavailable() {
+        return Optional.empty();
     }
 
     private Optional<String> check() {
@@ -131,6 +155,6 @@ public final class ContainersEnvironment implements EnvironmentProvider, AutoClo
 
     @Override
     public String toString() {
-        return "ContainersEnvironment(" + settings.postgresImage() + ", " + settings.sutBuildDir() + ")";
+        return "ContainersEnvironment(" + settings.postgresImage() + ", " + settings.kafkaImage() + ", " + settings.sutBuildDir() + ")";
     }
 }

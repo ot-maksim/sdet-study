@@ -2,6 +2,8 @@ package com.study.sut;
 
 import com.study.sut.db.JdbcUserRepository;
 import com.study.sut.db.Schema;
+import com.study.sut.events.KafkaUserEvents;
+import com.study.sut.users.UserEvents;
 import com.study.sut.users.InMemoryUserRepository;
 import com.study.sut.users.UserRepository;
 import com.study.sut.users.UserService;
@@ -17,6 +19,7 @@ import org.postgresql.ds.PGSimpleDataSource;
  * SUT_DB_URL       jdbc:postgresql://localhost:5432/sut
  * SUT_DB_USER      sut
  * SUT_DB_PASSWORD  sut
+ * SUT_KAFKA_BOOTSTRAP  unset: no events | host:port: publish user events to Kafka (topic "users")
  * </pre>
  */
 public final class SutMain {
@@ -26,7 +29,17 @@ public final class SutMain {
 
     public static void main(String[] args) {
         int port = Integer.parseInt(env("SUT_PORT", "7070"));
-        SutApp.create(new UserService(repository(), Clock.systemUTC())).start(port);
+        SutApp.create(new UserService(repository(), Clock.systemUTC(), events())).start(port);
+    }
+
+    private static UserEvents events() {
+        String bootstrap = env("SUT_KAFKA_BOOTSTRAP", "");
+        if (bootstrap.isEmpty()) {
+            return UserEvents.none();
+        }
+        KafkaUserEvents events = KafkaUserEvents.connect(bootstrap, SutApp.objectMapper());
+        Runtime.getRuntime().addShutdownHook(new Thread(events::close, "user-events-close"));
+        return events;
     }
 
     private static UserRepository repository() {

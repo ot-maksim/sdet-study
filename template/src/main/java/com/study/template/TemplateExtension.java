@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.junit.platform.commons.support.AnnotationSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +31,8 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  *   <li><b>the test scope</b>: test-scoped beans are created inside {@link TestScope#within} for this test and
  *       destroyed after it ({@code afterEach}), with the steps' undo actions, also when the test failed;</li>
  *   <li><b>environment policy</b>: asks the {@link EnvironmentProvider} before any test; unavailable → skipped with
- *       the reason, or failed when {@code template.require-environment=true} (CI);</li>
+ *       the reason, or failed when {@code template.require-environment=true} (CI); for {@link EventTests} also
+ *       whether the environment has a broker;</li>
  *   <li><b>a screenshot of a failed test</b>, only if the test had a browser.</li>
  * </ul>
  */
@@ -44,7 +46,11 @@ public final class TemplateExtension implements ExecutionCondition, ParameterRes
             return ConditionEvaluationResult.enabled("no test class");
         }
         ApplicationContext spring = SpringExtension.getApplicationContext(context);
-        Optional<String> reason = spring.getBean(EnvironmentProvider.class).unavailable();
+        EnvironmentProvider provider = spring.getBean(EnvironmentProvider.class);
+        Optional<String> reason = provider.unavailable();
+        if (reason.isEmpty() && AnnotationSupport.isAnnotated(context.getTestClass(), EventTests.class)) {
+            reason = provider.eventsUnavailable();
+        }
         if (reason.isEmpty()) {
             return ConditionEvaluationResult.enabled("environment is available");
         }

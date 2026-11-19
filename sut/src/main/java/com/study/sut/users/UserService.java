@@ -11,16 +11,24 @@ public class UserService {
 
     private final UserRepository repository;
     private final Clock clock;
+    private final UserEvents events;
 
     public UserService(UserRepository repository, Clock clock) {
+        this(repository, clock, UserEvents.none());
+    }
+
+    public UserService(UserRepository repository, Clock clock, UserEvents events) {
         this.repository = repository;
         this.clock = clock;
+        this.events = events;
     }
 
     public User create(NewUser request) {
-        ValidUser user = UserRules.validate(request);
+        ValidUser valid = UserRules.validate(request);
         // Postgres keeps microseconds: truncating here makes the response equal to what a later read returns
-        return repository.insert(user, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        User user = repository.insert(valid, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        events.created(user);   // after the insert: no event about a user that was not stored
+        return user;
     }
 
     public User get(long id) {
