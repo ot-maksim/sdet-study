@@ -7,6 +7,85 @@ either a running stand or started by the run itself with Testcontainers.
 The point to see: the three test classes of `framework/tests` moved here with one changed line (`package`).
 Nothing below the assembly knows about Spring, Docker or which environment ran.
 
+## Architecture
+
+### Layers
+
+```mermaid
+flowchart TB
+    tests["Tests: UsersApiTest, UsersPageTest,<br/>UserJourneyE2eTest, UserEventsE2eTest<br/>@ApiTests · @UiTests · @E2eTests · @EventTests"]
+
+    tt["@TemplateTest<br/>@SpringBootTest + extension"]
+    ext["TemplateExtension<br/>parameters, skip/fail, screenshot"]
+    root["TemplateConfiguration<br/>composition root on Spring"]
+
+    subgraph parts["stage 4 parts"]
+        scope["scope<br/>@TestScoped, guard"]
+        env["environment<br/>stand | containers"]
+        events["events<br/>Kafka, UserEvents"]
+        report["report<br/>Allure, decorators"]
+    end
+
+    subgraph framework["framework/ (stage 2)"]
+        domain["domain<br/>UserSteps, preconditions"]
+        api["api<br/>RestAssured"]
+        db["db<br/>JDBC"]
+        ui["ui<br/>Playwright"]
+        core["core<br/>config, Secret, cleanup"]
+    end
+
+    sut[("SUT + Postgres + Kafka<br/>compose stand or Testcontainers")]
+
+    tests --> tt & ext
+    tt & ext --> root
+    root --> scope & env & events & report
+    root --> domain
+    domain --> api & db & ui
+    api & db & ui --> core
+    api & db & ui --> sut
+    events --> sut
+    env -. "starts or probes" .-> sut
+
+    classDef s4 fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    classDef part fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    classDef s2 fill:#F1EFE8,stroke:#5F5E5A,color:#444441
+    class tt,ext,root s4
+    class scope,env,events,report part
+    class tests,domain,api,db,ui,core s2
+```
+
+- **Call path.** A test carries a kind annotation (`@ApiTests` etc.). The kind includes `@TemplateTest`, which brings
+  `@SpringBootTest` and `TemplateExtension`. The extension resolves test method parameters (no `@Autowired`), skips
+  the test when the environment is unavailable (fails it under the `ci` profile) and saves a screenshot when a UI test fails.
+- **The root.** `TemplateConfiguration` has one `@Bean` per binding, no scanning. The two choices are each a `switch` on an enum:
+  the environment (stand or containers) and the precondition channel (API or DB).
+- **The stage 4 parts** do not know each other; only the root wires them. Each tool is confined to its package:
+  Testcontainers to `environment`, Kafka to `events` and `environment`, Allure and AspectJ to `report`, Spring to the root
+  and `scope`. `ArchitectureTest` checks this.
+- **Stage 2 layers** are reused as they are: the tests moved here by changing their `package` line only.
+
+### Bean lifetimes
+
+```mermaid
+flowchart LR
+    test["<b>Test: @TestScoped</b><br/>one per test method, destroyed after it<br/><br/>Cleanup<br/>UserPrecondition (API | DB)<br/>UserSteps<br/>UiSession<br/>UsersScreen (Reporting…)<br/>UserEvents"]
+    run["<b>Run: one cached context per JVM</b><br/>lazy, closed at the end of the run<br/><br/>EnvironmentProvider<br/>ApiClient, UserApi<br/>Database, UserRows<br/>BrowserPool<br/>EventClient (one poll thread)<br/>Artifacts + listeners"]
+
+    test -- "depends on: fine" --> run
+    run -. "holds a test bean:<br/>CaptiveDependencyGuard<br/>fails at creation" .-> test
+
+    classDef runC fill:#E1F5EE,stroke:#0F6E56,color:#085041
+    classDef testC fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    class run runC
+    class test testC
+```
+
+The context is cached, so the environment and the browser pool start once per run. Beans that hold a test's state
+are `@TestScoped`. A run bean holding a test bean would be a captive dependency: it would keep the first test's object
+for the whole run. `CaptiveDependencyGuard` refuses it when the bean is created, not somewhere in the middle of the run.
+A test class that changes the configuration (`@TestPropertySource`, `@MockitoBean`, another profile) gets a second
+context and with it a second environment: keep test classes on the plain kinds.
+
 | Where | What to look at |
 |---|---|
 | `TemplateConfiguration` | the root, Spring edition: one `@Bean` per binding, no scanning, no auto-configuration; `@TestScoped` beans; the two choices (environment, precondition channel) as `switch` on enums |
