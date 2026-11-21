@@ -52,5 +52,6 @@ Run: `mvn -q -pl principles compile exec:java -Dmain.class=<fqcn>`; tests: `mvn 
 ## Workflow
 - One session per stage block (slicing in docs/PLAN.md). Work on `main`, no feature branches.
 - One commit per topic; commit only when the user asks. `mvn -q verify` must pass before committing.
+- A commit the user asked for is pushed right after it (`git push` to `origin main`), no separate ask needed.
 - The user also adds katas in parallel: check `git log` / `git status` before editing shared files
   (especially `pom.xml`, `docs/PLAN.md`) and never overwrite files you have not just read.
