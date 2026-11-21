@@ -1,0 +1,214 @@
+openapi: 3.0.3
+info:
+  title: SUT users API
+  version: 1.0.0
+  description: |
+    The REST contract of the system under test, owned by the SUT (the provider). Consumers generate their clients
+    from this file, never from the SUT's classes: an expectation computed by the SUT's own code is a tautology
+    (review P10). A change here is an API change; `project/*` checks every response it receives against it.
+
+    Error bodies carry a stable machine-readable `error` code and a human `message` that may change.
+servers:
+  - url: http://localhost:7070
+tags:
+  - name: users
+  - name: health
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: health
+      summary: Liveness of the SUT
+      responses:
+        '200':
+          description: Up
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+
+  /api/users:
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Register a user
+      description: |
+        Validation and normalization: name trimmed; email trimmed and lower-cased; country upper-cased.
+        The first failing rule wins, in field order (name, email, age, country).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewUser'
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              required: true
+              description: '/api/users/{id} of the new user'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '409':
+          description: 'Email already registered (`email_taken`), compared case-insensitively'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: All users ordered by id, or the one with the given email
+      parameters:
+        - name: email
+          in: query
+          required: false
+          description: Exact email after normalization; the result has at most one user
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [users]
+      operationId: getUser
+      summary: One user
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [users]
+      operationId: deleteUser
+      summary: Delete a user
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          $ref: '#/components/responses/Invalid'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  responses:
+    Invalid:
+      description: 'The request is invalid: a validation code, `malformed_json` or `id_invalid`'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 'No user with this id (`user_not_found`)'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP]
+
+    NewUser:
+      type: object
+      description: |
+        A create request. Every field is optional in the schema on purpose: a missing value is a validation
+        error with its own code (400), not a malformed request.
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: 'Not blank after trimming (`name_blank`), at most 100 characters (`name_too_long`)'
+        email:
+          type: string
+          maxLength: 254
+          description: '`local@domain.tld`, at most 254 characters (`email_invalid`)'
+        age:
+          type: integer
+          format: int32
+          minimum: 18
+          maximum: 150
+          description: 'Required (`age_missing`), 18..150 (`age_too_low`, `age_too_high`)'
+        country:
+          type: string
+          description: 'ISO 3166 alpha-2, any case (`country_invalid`)'
+
+    User:
+      type: object
+      required: [id, name, email, age, country, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        email:
+          type: string
+          description: Lower-cased
+        age:
+          type: integer
+          format: int32
+        country:
+          type: string
+          pattern: '^[A-Z]{2}$'
+        createdAt:
+          type: string
+          format: date-time
+          description: UTC, microsecond precision (Postgres)
+
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: The stable code; a new code is an API change
+          enum:
+            - name_blank
+            - name_too_long
+            - email_invalid
+            - age_missing
+            - age_too_low
+            - age_too_high
+            - country_invalid
+            - malformed_json
+            - id_invalid
+            - email_taken
+            - user_not_found
+        message:
+          type: string
+          description: For people; may change without notice

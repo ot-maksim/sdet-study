@@ -19,6 +19,7 @@
         <module>framework</module>
         <module>review</module>
         <module>template</module>
+        <module>project</module>
     </modules>
 
     <properties>
@@ -50,6 +51,10 @@
         <allure-report.version>2.36.0</allure-report.version>
         <!-- Load-time weaving of the reporting aspect; declared here, so it wins over the version Boot's BOM manages -->
         <aspectj.version>1.9.25.1</aspectj.version>
+        <!-- Stage 5 (project/*): the API client generated from sut/src/main/resources/openapi.yaml, and every
+             response checked against the same file at run time -->
+        <openapi-generator.version>7.26.0</openapi-generator.version>
+        <swagger-request-validator.version>2.46.1</swagger-request-validator.version>
 
         <surefire.version>3.5.6</surefire.version>
         <exec-plugin.version>3.5.0</exec-plugin.version>
@@ -153,6 +158,17 @@
                 <artifactId>allure-java-commons</artifactId>
                 <version>${allure.version}</version>
             </dependency>
+            <!-- Stage 5, project/*: API exchanges as report steps; response validation against the OpenAPI file -->
+            <dependency>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-rest-assured</artifactId>
+                <version>${allure.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.atlassian.oai</groupId>
+                <artifactId>swagger-request-validator-restassured</artifactId>
+                <version>${swagger-request-validator.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.aspectj</groupId>
                 <artifactId>aspectjrt</artifactId>
@@ -206,6 +222,11 @@
                     <groupId>io.qameta.allure</groupId>
                     <artifactId>allure-maven</artifactId>
                     <version>${allure-maven.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.openapitools</groupId>
+                    <artifactId>openapi-generator-maven-plugin</artifactId>
+                    <version>${openapi-generator.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

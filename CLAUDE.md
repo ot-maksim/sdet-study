@@ -23,8 +23,13 @@ of a session; tick items there when a topic is done.
 - `template/` — stage 4: the working template. Reuses the `framework/` layers unchanged; only the assembly is new
   (Spring Boot test context `TemplateConfiguration`, `@TestScoped` beans, `EnvironmentProvider`: `stand` | `containers`
   via Testcontainers, default). Package `com.study.template`. Spring stays in this module: never add it to `framework/`.
+- `project/` — stage 5: the working project as a team would start it, one Maven module each (`project/junit`, later
+  `project/testng`, artifact `project-<runner>`, package `com.study.project`), layers as packages enforced by
+  `ArchitectureTest` (ADR 0012). Standalone: no dependency on `framework/`, `template/` or each other; the API client is
+  generated from the SUT's contract `sut/src/main/resources/openapi.yaml` (ADR 0013). The runner (JUnit/TestNG) stays in
+  `assembly`.
 
-The yardstick for `framework/`, `review/` and `template/` — properties of a good test framework, the change scenarios
+The yardstick for `framework/`, `review/`, `template/` and `project/` — properties of a good test framework, the change scenarios
 that check them, links to where each is shown: [docs/test-framework-architecture.md](docs/test-framework-architecture.md).
 
 ## Kata format (principles/)
@@ -44,8 +49,9 @@ Run: `mvn -q -pl principles compile exec:java -Dmain.class=<fqcn>`; tests: `mvn 
 ## Constraints (agreed, do not change without the user)
 - Stage 2 framework is a **learning skeleton**: minimal but architecturally correct layers.
 - `framework/` (stage 2): DI by hand (composition root in a JUnit 5 extension), no Spring, Testcontainers, Allure,
-  Appium or CI. Those belong to `template/` (stage 4) only.
-- Spring Boot 3.5 (JUnit 5); its BOM is imported in `template/pom.xml` only, the version property is in the parent.
+  Appium or CI. Those belong to `template/` (stage 4) and `project/` (stage 5) only.
+- Spring Boot 3.5 (JUnit 5); its BOM is imported in `template/pom.xml` and `project/*/pom.xml` only, the version
+  property is in the parent.
 - Clients: RestAssured (API), Playwright (UI web + mobile-web emulation), JDBC (DB, Postgres via docker compose).
 - Java 17; dependency and plugin versions only in the parent `pom.xml`.
 

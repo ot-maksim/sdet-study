@@ -36,6 +36,9 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 │   └── tests/               E2E и интеграционные тесты
 ├── review/                  этап 3: унаследованный фреймворк с заложенными проблемами (bad) → ревью → рефакторинг (good)
 ├── template/                этап 4: рабочий шаблон — те же слои framework/, сборка на Spring Boot test context, окружение stand | Testcontainers
+├── project/                 этап 5: рабочий проект «как в команде» — один модуль, слои = пакеты + ArchUnit, API-клиент из OpenAPI
+│   ├── junit/               на JUnit 5
+│   └── testng/              на TestNG (5b)
 ├── docker-compose.yml       postgres + sut
 └── docs/                    план, ADR-заметки
 ```
@@ -56,6 +59,8 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 | 4b | Kafka: SUT публикует `user.created`, `EventClient` на настоящем брокере (Testcontainers), E2E «API → событие» ✅ |
 | 4c | Allure (listener → Observer), retry, параллельный запуск в шаблоне, CI (pipeline) ✅ |
 | 4d | Appium-реализация native mobile за `UsersScreen` |
+| 5a | Рабочий проект в одном модуле (`project/junit`): OpenAPI-контракт SUT, сгенерированный клиент, проверка ответов по контракту ✅ |
+| 5b | Тот же проект на TestNG (`project/testng`), сравнение раннеров, CI |
 
 ## Этапы
 
@@ -123,6 +128,14 @@ sdet-study/                  parent pom, Java 17, JUnit 5, AssertJ, jqwik
 - [x] 4b. Kafka: SUT публикует `user.created` (опционально, по конфигу), `EventClient` из заготовки [stage4/kafka-event-client.md](stage4/kafka-event-client.md) на настоящем брокере (Testcontainers, ещё один контейнер в `ContainersEnvironment`) + его интеграционные тесты + E2E «создал через API → получил событие»; дизайн разобран в `principles/concurrency/events/kafka` — [`template/README.md`](../template/README.md) «Stage 4b», ADR [0010](adr/0010-events-kafka.md). SUT: порт `UserEvents` + `KafkaUserEvents` по `SUT_KAFKA_BOOTSTRAP` (fire-and-forget, топик `users` создаёт сам, key = id, заголовок `event-type`); compose-профиль `events`; `ContainersEnvironment` + `apache/kafka-native` (параллельно с Postgres, ~5 с всё окружение); брокер — capability (`eventsUnavailable`, `@EventTests`: нет брокера → skip, `ci` → fail); `EventClient` — run-бин, `UserEvents` — `@TestScoped` подписка. Настоящий брокер нашёл: поздний слушатель на уже назначенном топике получал старые события (→ старт на слушателя по `endOffsets`, регистрация в poll-потоке); только что созданный топик «не найден» (→ grace 3 с); `pollMatching` выбрасывает нужное следующему ожиданию (→ `UserEvents` хранит пропущенное)
 - [x] 4c. Allure (listener → Observer), retry, параллельный запуск в шаблоне, CI — [`template/README.md`](../template/README.md) «Stage 4c», ADR [0011](adr/0011-report-retry-ci.md). Allure 2.35 (3.x требует JUnit 6): `allure-junit-platform` — Observer движка JUnit; свой Observer `Artifacts` → `ArtifactFiles` + `AllureArtifacts` (скриншот упавшего UI-теста, `TemplateExtension` не знает куда); шаги без правки этапа 2: декораторы там, где есть интерфейс (`UserPrecondition`, `UsersScreen`), AspectJ LTW там, где `final` без шва (`UserSteps`, приватный `ApiClient.send` — запрос/ответ вложениями, `UserEvents.created`); `ReportingTest` (`@Isolated`) ловит запуск без агента и «отвалившийся» pointcut. Retry: только в CI (Maven-профиль `ci` по `CI`), один раз, флейк = зелёный, но в `Flakes:`/XML, Retries Allure, summary и warning пайплайна. Параллельность: отказ на старте, если JUnit-параллельность > `template.ui.max-browsers`; `forkCount=1`. CI: `.github/workflows/tests.yml` — весь реактор (compose-стенд для этапа 2, контейнеры для шаблона), отчёт с историей → artifact + Pages из `main`; не запускался на GitHub (нет remote). Попутно: `TemplatePropertiesTest` больше не читает системные свойства/переменные машины (`-Dspring.profiles.active=ci` ломал «дефолты»)
 - [ ] 4d. Appium-реализация native mobile за уже существующим интерфейсом `UsersScreen` (выбор реализации — в `TemplateConfiguration`)
+
+### Этап 5. Рабочий проект (`project/`)
+То, с чего команда начала бы настоящий репозиторий автоматизации на том же стеке и SUT: **один модуль**, слои — пакеты
+(ADR [0012](adr/0012-module-granularity.md)); каждый проект самостоятельный (не зависит от `framework/`, `template/` и
+друг от друга), общий у них только контракт SUT. Два проекта отличаются только раннером.
+
+- [x] 5a. `project/junit` — [`project/junit/README.md`](../project/junit/README.md), ADR [0013](adr/0013-openapi-client.md). Контракт провайдера `sut/src/main/resources/openapi.yaml` (users + health, enum кодов ошибок, `Location` обязателен); клиент генерируется (`openapi-generator`, `rest-assured` + Jackson) в `target/generated-sources`, поверх него руками: `ApiTransport` (один `ApiResponse` с обменом на вызов через фильтр-регистратор), `UserApi` — anti-corruption layer (сгенерированные модели → свои records), `ContractFilter` — каждый **ответ** сверяется с тем же файлом (запросы нет: негативные тесты нарушают контракт намеренно). Отличия от шаблона: пакеты вместо модулей, отчёт без AspectJ (декораторы + `AllureRestAssured`-фильтр), настройки окружения в `environment`, JUnit только в `assembly` (правило — задел под 5b). `ArchitectureTest` (14 правил) нашёл при переносе два настоящих нарушения: проба стенда ходила в сгенерированный клиент (→ `SutHealth`), декоратор отчёта видит records api через доменный интерфейс (разрешено явно). 62 теста на Testcontainers + Chromium, без пропусков
+- [ ] 5b. `project/testng` — тот же код, другой раннер: Spring через `AbstractTestNGSpringContextTests` или свой listener, test-scope на метод через `IHookable` (экземпляр класса один на все методы → поля нельзя), группы вместо мета-аннотаций, `SkipException`, `IRetryAnalyzer`, `allure-testng`, `testng.xml`; ADR 0014 (JUnit vs TestNG), CI job
 
 ## Почему Testcontainers не на этапе 2
 

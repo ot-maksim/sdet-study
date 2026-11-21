@@ -15,6 +15,10 @@ a responsive page.
 
 ## Interface (what tests may rely on)
 
+The REST part is also a machine-readable contract: [`src/main/resources/openapi.yaml`](src/main/resources/openapi.yaml)
+(OpenAPI 3.0, ships in the jar). `project/*` generates its client from it and validates every response against it
+(ADR 0013); a change of the API is a change of that file.
+
 REST, JSON:
 
 | Request | Response |

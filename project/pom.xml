@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.study</groupId>
+        <artifactId>sdet-study</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>project</artifactId>
+    <packaging>pom</packaging>
+    <name>project</name>
+    <description>Stage 5: the same working test project twice, as separate repositories would hold it — one module
+        each, layers as packages (ADR 0012); they differ only in the test runner</description>
+
+    <!-- Each child stands alone: it shares nothing with framework/, template/ or its sibling, only the SUT's contract -->
+    <modules>
+        <module>junit</module>
+    </modules>
+</project>

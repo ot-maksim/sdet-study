@@ -1,0 +1,16 @@
+<!-- Levels for tests that run without the Spring context (EventClientTest): Logback's default is DEBUG for
+     everything, and kafka-clients logs every seek. Spring Boot picks this file up too; logging.level in
+     application.yml is applied on top of it. -->
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="com.study" level="INFO"/>
+    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="tc" level="INFO"/>
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
