@@ -7,6 +7,10 @@ either a running stand or started by the run itself with Testcontainers.
 The point to see: the three test classes of `framework/tests` moved here with one changed line (`package`).
 Nothing below the assembly knows about Spring, Docker or which environment ran.
 
+Next stage: [`project/`](../project/README.md) — the same stack as a team would start a repository: one module with
+layers as packages (ADR 0012), a client generated from the SUT's OpenAPI contract (ADR 0013), on JUnit and on TestNG
+(ADR 0014).
+
 ## Architecture
 
 ### Layers

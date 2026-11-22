@@ -9,7 +9,7 @@
 | `framework/` | Учебный скелет фреймворка: `core` (конфиг, жизненный цикл, механика composition root) — [framework/core/README.md](framework/core/README.md), `api` (RestAssured-клиенты) — [framework/api/README.md](framework/api/README.md), `db` (JDBC: проверки и seeding) — [framework/db/README.md](framework/db/README.md), `ui` (Playwright, параллельные UI-тесты) — [framework/ui/README.md](framework/ui/README.md), `domain` (бизнес-шаги, предусловия API/DB) — [framework/domain/README.md](framework/domain/README.md), `tests` (composition root, API/UI/E2E-тесты) — [framework/tests/README.md](framework/tests/README.md); решения — [docs/adr](docs/adr) |
 | `review/` | Этап 3: ревью унаследованного фреймворка — `bad` с 10 заложенными проблемами и 3 ложными срабатываниями, `good` с рефакторингом, по тесту `P<NN>*ReviewTest` на проблему; ответы — [review/REVIEW.md](review/REVIEW.md) (сначала попробовать самому). Как проводить ревью — [review/README.md](review/README.md) |
 | `template/` | Этап 4: рабочий шаблон. Слои `framework/` переиспользуются без изменений, новая только сборка: Spring Boot test context (`TemplateConfiguration`, `@TestScoped`), окружение `containers` (Testcontainers, по умолчанию) или `stand`, события Kafka, отчёт Allure, правила слоёв на ArchUnit — [template/README.md](template/README.md) |
-| `project/` | Этап 5: рабочий проект «как в команде» на том же стеке и SUT — один модуль, слои = пакеты + ArchUnit (ADR 0012), API-клиент генерируется из OpenAPI-контракта SUT, каждый ответ сверяется с контрактом (ADR 0013). `project/junit` — [project/junit/README.md](project/junit/README.md); `project/testng` — тот же проект на TestNG, отличается только glue раннера в `assembly/` (ADR 0014, `project/check-twins.sh`) — [project/testng/README.md](project/testng/README.md) |
+| `project/` | Этап 5: рабочий проект «как в команде» на том же стеке и SUT, обзор — [project/README.md](project/README.md). Один модуль, слои = пакеты + ArchUnit (ADR [0012](docs/adr/0012-module-granularity.md)), API-клиент генерируется из OpenAPI-контракта SUT, каждый ответ сверяется с контрактом (ADR [0013](docs/adr/0013-openapi-client.md)). Два проекта-близнеца: `project/junit` — [project/junit/README.md](project/junit/README.md); `project/testng` — тот же проект на TestNG, отличается только glue раннера в `assembly/` (ADR [0014](docs/adr/0014-junit-vs-testng.md), проверяет `project/check-twins.sh`) — [project/testng/README.md](project/testng/README.md) |
 | `sut/` | Тестируемое приложение: пользователи, REST + HTML на Javalin, Postgres через JDBC, OpenAPI-контракт `src/main/resources/openapi.yaml` — [sut/README.md](sut/README.md) |
 
 Критерий для `framework/`, `review/`, `template/` и `project/` — свойства хорошего тестового фреймворка и сценарии изменений,
@@ -67,4 +67,22 @@ mvn -q -pl template -am verify
 
 ```bash
 mvn -q -pl template -am verify -Dspring.profiles.active=stand
+```
+
+Рабочий проект, оба раннера: герметично, на Testcontainers (образ SUT собирается из `sut/target/sut.jar`, см. выше):
+
+```bash
+mvn -q -pl project/junit,project/testng verify
+```
+
+Один вид тестов (`api`, `ui`, `e2e`, `events`) — тег в JUnit, группа в TestNG:
+
+```bash
+mvn -q -pl project/testng verify -Dgroups=api
+```
+
+Что различается у близнецов (всё, кроме glue раннера, должно совпадать):
+
+```bash
+project/check-twins.sh
 ```
