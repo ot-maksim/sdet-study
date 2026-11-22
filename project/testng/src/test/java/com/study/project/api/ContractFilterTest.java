@@ -120,4 +120,16 @@ public class ContractFilterTest {
                 .hasMessageContaining("Cannot reach the SUT")
                 .hasMessageContaining("GET /api/users/7");
     }
+
+    @Test
+    public void aBugInTheCallersOwnCodeIsNotBlamedOnTheSut() {
+        ApiTransport transport = new ApiTransport(
+                new ApiSettings(URI.create("http://localhost:" + sut.getAddress().getPort()), Duration.ofSeconds(5)), List.of());
+
+        assertThatThrownBy(() -> transport.send(api -> {
+            throw new IllegalArgumentException("a bug in the test");
+        }))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("a bug in the test");
+    }
 }

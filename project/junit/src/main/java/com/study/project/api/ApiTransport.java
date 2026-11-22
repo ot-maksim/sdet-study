@@ -12,6 +12,7 @@ import io.restassured.config.HttpClientConfig;
 import io.restassured.config.ObjectMapperConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.Filter;
+import java.io.IOException;
 import java.util.List;
 import java.util.function.Function;
 
@@ -52,17 +53,25 @@ public final class ApiTransport {
     /**
      * Sends one generated operation and returns the exchange whatever the status: a status is the caller's
      * decision ({@link ApiResponse#expect}). Fails only when there is no exchange to look at (the SUT is not
-     * reachable) or the response breaks the contract.
+     * reachable) or the response breaks the contract. Any other failure (a bug in {@code operation}, a body that
+     * cannot be serialized) is thrown as it is: it is not the environment's fault and must not be reported as such.
      */
     public ApiResponse send(Function<ApiClient, ? extends Oper> operation) {
         Exchange exchange = new Exchange(json);
         ApiClient client = ApiClient.api(ApiClient.Config.apiConfig().reqSpecSupplier(() -> spec(exchange)));
+        Oper call = operation.apply(client);   // the caller's code, outside the try: its failures stay its own
         try {
-            operation.apply(client).execute(response -> response);
+            call.execute(response -> response);
         } catch (ContractFilter.Violation violation) {
             throw new ApiException("The response breaks the SUT's contract (openapi.yaml):\n"
                     + violation.getMessage() + "\n" + exchange.response(), violation);
-        } catch (Exception e) {   // RestAssured rethrows checked IOExceptions (ConnectException) undeclared
+        } catch (Exception e) {
+            // RestAssured rethrows checked IOExceptions (ConnectException, SocketTimeoutException) undeclared, so
+            // they cannot be caught by type. The try declares no checked exception: anything else is unchecked and
+            // the precise rethrow below needs no throws clause.
+            if (!(e instanceof IOException)) {
+                throw e;
+            }
             throw new ApiException("Cannot reach the SUT at " + settings.baseUrl() + " (" + exchange.request() + "): " + e
                     + ". Is the environment up?", e);
         }
