@@ -43,6 +43,16 @@ opinion (an architectural *fitness function*). The decisions behind each one go 
    in Spring: [ADR 0008](adr/0008-spring-test-context.md)).
 3. **Explicit lifetimes.** Each object is run-scoped (immutable or thread-safe) or test-scoped (closed after the
    test, also on failure). A run object never holds a test object (the captive dependency).
+   By hand: [`Lifetime`](../framework/core/src/main/java/com/study/framework/core/inject/Lifetime.java) `RUN`/`TEST`
+   and the guards ([ADR 0001](adr/0001-composition-root-by-hand.md); shown by
+   [`CompositionRootTest`](../framework/core/src/test/java/com/study/framework/core/inject/CompositionRootTest.java):
+   reverse close after a failure, test object in `@BeforeAll`, captive dependency). In Spring: `@TestScoped` +
+   [`CaptiveDependencyGuard`](../template/src/main/java/com/study/template/scope/CaptiveDependencyGuard.java)
+   ([ADR 0008](adr/0008-spring-test-context.md), why not scoped proxies or a thread scope;
+   [`TestScopeTest`](../template/src/test/java/com/study/template/scope/TestScopeTest.java)); the same scope under
+   TestNG: [ADR 0014](adr/0014-junit-vs-testng.md). Why only immutable things may be shared:
+   [`principles/parallel`](../principles/src/main/java/com/study/principles/parallel/README.md); the broken version:
+   [`review` P02, P09](../review/REVIEW.md).
 4. **Ports for everything external**: environment, time, the way data is prepared, every channel to the SUT. A
    port is what makes a double, a second implementation and a contract test possible
    ([ports-and-adapters.md](ports-and-adapters.md), [test-doubles.md](test-doubles.md)).
