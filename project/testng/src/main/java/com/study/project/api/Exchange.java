@@ -8,6 +8,8 @@ import io.restassured.specification.FilterableRequestSpecification;
 import io.restassured.specification.FilterableResponseSpecification;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Records one call: the request as sent and the response as received, detached from RestAssured. One instance per
@@ -33,7 +35,7 @@ final class Exchange implements Filter {
         requestBody = text(request.getBody());
         Response received = context.next(request, responseSpec);
         response = new ApiResponse(method, path, requestBody, received.statusCode(), received.asString(),
-                received.getHeader("Location"), json);
+                headers(received), json);
         return received;
     }
 
@@ -47,6 +49,13 @@ final class Exchange implements Filter {
             throw new IllegalStateException("No response recorded for " + request());
         }
         return response;
+    }
+
+    /** Every header as received, in order; a repeated header keeps all its values. */
+    private static List<Map.Entry<String, String>> headers(Response received) {
+        return received.getHeaders().asList().stream()
+                .map(header -> Map.entry(header.getName(), header.getValue()))
+                .toList();
     }
 
     private static String text(Object body) {

@@ -31,6 +31,7 @@ class ContractFilterTest {
 
     private final AtomicReference<Answer> answer = new AtomicReference<>();
     private HttpServer sut;
+    private ApiTransport transport;
     private UserApi users;
 
     private record Answer(int status, String body) {
@@ -44,6 +45,8 @@ class ContractFilterTest {
             byte[] body = next.body().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.getResponseHeaders().add("Location", "/api/users/7");
+            exchange.getResponseHeaders().add("Link", "</api/users?page=2>; rel=\"next\"");
+            exchange.getResponseHeaders().add("Link", "</api/users?page=0>; rel=\"prev\"");
             exchange.sendResponseHeaders(next.status(), next.body().isEmpty() ? -1 : body.length);
             if (body.length > 0) {
                 exchange.getResponseBody().write(body);
@@ -52,7 +55,8 @@ class ContractFilterTest {
         });
         sut.start();
         ApiSettings settings = new ApiSettings(URI.create("http://localhost:" + sut.getAddress().getPort()), Duration.ofSeconds(5));
-        users = new UserApi(new ApiTransport(settings, List.of(ContractFilter.fromClasspath("contract/openapi.yaml"))));
+        transport = new ApiTransport(settings, List.of(ContractFilter.fromClasspath("contract/openapi.yaml")));
+        users = new UserApi(transport);
     }
 
     @AfterEach
@@ -127,5 +131,18 @@ class ContractFilterTest {
         }))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("a bug in the test");
+    }
+
+    @Test
+    void responseHeadersAreFoundIgnoringCaseWithEveryValueOfARepeatedOne() {
+        answer.set(new Answer(200, ADA));
+
+        ApiResponse response = transport.send(api -> api.users().getUser().idPath(7));
+
+        assertThat(response.header("CONTENT-TYPE")).contains("application/json");
+        assertThat(response.headers("link")).containsExactly(
+                "</api/users?page=2>; rel=\"next\"", "</api/users?page=0>; rel=\"prev\"");
+        assertThat(response.header("ETag")).isEmpty();
+        assertThat(response.headers("ETag")).isEmpty();
     }
 }

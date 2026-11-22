@@ -3,11 +3,17 @@ package com.study.project.api;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * A response with the request that caused it, detached from RestAssured: tests and steps never see
  * {@code io.restassured.*}, so the transport can be replaced without touching them.
+ *
+ * <p>Headers are looked up by name ignoring case, as HTTP says ({@code etag} finds {@code ETag}). The business meaning
+ * of a header (a version, a page total) belongs to the resource class that turns the response into a record
+ * ({@code UserApi}), not to tests.
  */
 public final class ApiResponse {
 
@@ -16,16 +22,17 @@ public final class ApiResponse {
     private final String requestBody;
     private final int status;
     private final String body;
-    private final String location;
+    private final List<Map.Entry<String, String>> headers;
     private final ObjectMapper json;
 
-    ApiResponse(String method, String path, String requestBody, int status, String body, String location, ObjectMapper json) {
+    ApiResponse(String method, String path, String requestBody, int status, String body, List<Map.Entry<String, String>> headers,
+            ObjectMapper json) {
         this.method = method;
         this.path = path;
         this.requestBody = requestBody;
         this.status = status;
         this.body = body;
-        this.location = location;
+        this.headers = List.copyOf(headers);
         this.json = json;
     }
 
@@ -37,8 +44,22 @@ public final class ApiResponse {
         return body;
     }
 
+    /** The first value of the header, empty if the response has none. */
+    public Optional<String> header(String name) {
+        return headers(name).stream().findFirst();
+    }
+
+    /** All values of a header that may repeat ({@code Set-Cookie}, {@code Link}), in the order received. */
+    public List<String> headers(String name) {
+        String wanted = name.toLowerCase(Locale.ROOT);
+        return headers.stream()
+                .filter(header -> header.getKey().toLowerCase(Locale.ROOT).equals(wanted))
+                .map(Map.Entry::getValue)
+                .toList();
+    }
+
     public Optional<String> location() {
-        return Optional.ofNullable(location);
+        return header("Location");
     }
 
     /** Fails with the whole exchange in the message if the status is not the expected one. */
