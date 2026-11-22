@@ -4,6 +4,8 @@ package com.study.project.api.users;
  * Request DTO of {@code POST /api/users}. Immutable; tests derive variants with withers:
  * {@code users.valid().withAge(17)} — the test states only what differs (DAMP, principles/dry).
  * Fields are nullable on purpose: a {@code null} is sent as a missing value, which is a test case too.
+ * Say it with {@code withoutAge()} rather than {@code withAge(null)}: the field is absent on the wire, not {@code null}
+ * (the transport does not send nulls). An explicit {@code "age": null} cannot be built from this DTO.
  *
  * <p>Withers instead of a separate Builder class: four fields, always a valid starting point
  * ({@link NewUsers#valid()}), nothing to accumulate before {@code build()}.
@@ -24,5 +26,25 @@ public record NewUser(String name, String email, Integer age, String country) {
 
     public NewUser withCountry(String country) {
         return new NewUser(name, email, age, country);
+    }
+
+    /** The field is not sent at all. */
+    public NewUser withoutName() {
+        return withName(null);
+    }
+
+    /** The field is not sent at all. */
+    public NewUser withoutEmail() {
+        return withEmail(null);
+    }
+
+    /** The field is not sent at all. */
+    public NewUser withoutAge() {
+        return withAge(null);
+    }
+
+    /** The field is not sent at all. */
+    public NewUser withoutCountry() {
+        return withCountry(null);
     }
 }
