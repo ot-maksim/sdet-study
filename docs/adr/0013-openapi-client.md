@@ -31,7 +31,8 @@ Two separate questions:
     the api package.
 - **Every response is checked against the same file** (`ContractFilter`, Atlassian
   `swagger-request-validator`): declared status, body schema (required fields, types, formats, the enum of error
-  codes), required headers. A violation fails the call with the validator's report and the exchange.
+  codes), required headers. A violation fails the call with the validator's report and the exchange (the request
+  and the response: method, URL, status, bodies).
   **Requests are not checked**: negative tests send what the contract forbids (age 17, a missing field) on purpose.
 - The build copies the file next to the classes (`contract/openapi.yaml`): the generator and the validator read
   one source, so they cannot disagree.
@@ -41,7 +42,7 @@ Two separate questions:
 | Option | Why not |
 |---|---|
 | Hand-written client only (ADR 0003) | No link to the contract; drift surfaces late, as unrelated failures |
-| Tests call the generated client directly | Tests depend on generated models (mutable, regenerated, no withers); every contract change touches tests; no `ApiResponse` with the exchange in failure messages |
+| Tests call the generated client directly | Tests depend on generated models (mutable, regenerated, no withers); every contract change touches tests; no `ApiResponse`, so failure messages lose the request/response pair |
 | Generate from the SUT's code (springdoc-style, or share its DTOs) | The test oracle becomes the SUT itself (P10) |
 | A separate contract-test suite (Pact, Schemathesis) instead of a filter | Worth it with several consumers or for fuzzing; here it would test the same responses again in another run. Complementary, not instead |
 | Validate requests too | Negative tests are exactly the requests the contract rejects; they would need a switch per call |
