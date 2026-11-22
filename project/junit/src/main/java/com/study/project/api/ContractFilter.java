@@ -36,7 +36,7 @@ public final class ContractFilter implements Filter {
     public static ContractFilter fromClasspath(String resource) {
         try (InputStream in = ContractFilter.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
-                throw new IllegalStateException("No " + resource + " on the class path (project/junit/pom.xml copies it from sut/)");
+                throw new IllegalStateException("No " + resource + " on the class path (the module's pom.xml copies it from sut/)");
             }
             return fromSpecification(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {

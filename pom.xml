@@ -147,10 +147,22 @@
                 <artifactId>archunit-junit5</artifactId>
                 <version>${archunit.version}</version>
             </dependency>
+            <!-- project/testng: the rules checked from a TestNG test through the core API (no JUnit engine there) -->
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
             <!-- Stage 4c, template/ only: the report listener and the weaver of the reporting aspect -->
             <dependency>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-junit-platform</artifactId>
+                <version>${allure.version}</version>
+            </dependency>
+            <!-- project/testng: the report listener of TestNG (ServiceLoader), same Allure line -->
+            <dependency>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-testng</artifactId>
                 <version>${allure.version}</version>
             </dependency>
             <dependency>

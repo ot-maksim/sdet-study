@@ -1,0 +1,2 @@
+# Registered for every TestNG run on this class path (Surefire, IDE, programmatic): the runner glue of assembly/
+com.study.project.assembly.ProjectListener

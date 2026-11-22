@@ -19,5 +19,6 @@
     <!-- Each child stands alone: it shares nothing with framework/, template/ or its sibling, only the SUT's contract -->
     <modules>
         <module>junit</module>
+        <module>testng</module>
     </modules>
 </project>

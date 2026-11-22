@@ -1,6 +1,7 @@
-# The whole repository on every push: katas, the SUT, stage 2 against the compose stand, stage 4 (template/) against
-# its own containers. Then the Allure report of template/: an artifact of every run, and GitHub Pages (with the
-# history of earlier runs: trends, retries, flaky) for main. Decisions: docs/adr/0011-report-retry-ci.md
+# The whole repository on every push: katas, the SUT, stage 2 against the compose stand, stage 4 (template/) and
+# stage 5 (project/junit, project/testng) against their own containers. Then the Allure report of template/: an
+# artifact of every run, and GitHub Pages (with the history of earlier runs: trends, retries, flaky) for main.
+# Decisions: docs/adr/0011-report-retry-ci.md; the two stage 5 runners: docs/adr/0014-junit-vs-testng.md
 name: tests
 
 on:
@@ -49,7 +50,15 @@ jobs:
           mvn -B -q -pl sut -am package -DskipTests
           docker compose up -d --build --wait
 
-      # CI is set by GitHub: Maven profile ci of template/ reruns a failed test once (flaky = green but reported).
+      # Stage 5 twins: everything but the runner glue (assembly/) must stay byte-identical; seconds, before the tests
+      - name: project/junit and project/testng differ only in the runner glue
+        run: project/check-twins.sh
+
+      # One reactor run for every module, the TestNG project included: it needs nothing the others do not (Docker,
+      # Chromium), and Surefire picks its provider per module. A job per runner would build the SUT and pull the
+      # images twice for no extra signal.
+      # CI is set by GitHub: Maven profile ci of template/ and project/* retries a failed test once (flaky = green
+      # but reported; JUnit: Surefire's rerun, TestNG: IRetryAnalyzer).
       # stand.required / Spring profile ci: a missing environment fails the build instead of skipping tests.
       # --fail-at-end: a red kata must not hide the results (and the report) of the modules after it
       - name: Tests
@@ -60,6 +69,10 @@ jobs:
         run: |
           flaky=$(grep -l '<flakyFailure\|<flakyError' $(find . -path '*/surefire-reports/TEST-*.xml') 2>/dev/null \
             | sed -E 's#.*/TEST-(.*)\.xml#\1#' || true)
+          # TestNG retries in-process: the retried attempt is a skip in the XML; ProjectListener lists the test here
+          if [ -f project/testng/target/flaky-tests.txt ]; then
+            flaky=$(printf '%s\n%s' "$flaky" "$(cat project/testng/target/flaky-tests.txt)" | sed '/^$/d')
+          fi
           if [ -z "$flaky" ]; then
             echo "No flaky tests" >> "$GITHUB_STEP_SUMMARY"
           else

@@ -10,7 +10,7 @@ Testcontainers, Allure. Two differences from `template/`, both on purpose:
 2. **The API client is generated from the SUT's OpenAPI** and every response is checked against the same file
    ([ADR 0013](../../docs/adr/0013-openapi-client.md)).
 
-It stands alone: no dependency on `framework/`, `template/` or its TestNG sibling (`project/testng`, stage 5b), only
+It stands alone: no dependency on `framework/`, `template/` or its TestNG twin ([`project/testng`](../testng/README.md), stage 5b), only
 on the SUT's contract `sut/src/main/resources/openapi.yaml` and the SUT image for Testcontainers. The code started as
 a copy of those modules; what changed is listed below.
 
@@ -90,7 +90,9 @@ Chromium for Playwright is installed once, explicitly: see `framework/ui/README.
 - \+ One pom, one place to look; layers still visible (packages) and enforced (ArchUnit runs without a stand).
 - \+ The contract is executable: a moved path needs only a rebuild, a renamed operation or parameter is a compile
   error in `UserApi`, a changed response is a red test with the validator's report.
-- \+ The runner is confined to `assembly`: switching JUnit ↔ TestNG touches one package (stage 5b shows it).
+- \+ The runner is confined to `assembly`: switching JUnit ↔ TestNG touches one package:
+  [`project/testng`](../testng/README.md) is the same `src/main` but `assembly/`, checked by `project/check-twins.sh`
+  (ADR 0014).
 - − Boundaries are a test, not the compiler: a violation compiles and turns red in `verify`.
 - − The generator is a build dependency with quirks (a schema `Error` becomes a class `Error`, `null` handling by
   options); review the generated diff on upgrade.

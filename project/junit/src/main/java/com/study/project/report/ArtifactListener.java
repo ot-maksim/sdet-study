@@ -1,7 +1,7 @@
 package com.study.project.report;
 
 /**
- * Observer of the artifacts a test run produces. The producer ({@code ProjectExtension}) knows this interface
+ * Observer of the artifacts a test run produces. The producer (the runner glue in {@code assembly}) knows this interface
  * only: whether the screenshot ends up in a folder, in Allure, or in both is the root's choice
  * ({@code ProjectConfiguration}: every bean of this type is subscribed).
  */

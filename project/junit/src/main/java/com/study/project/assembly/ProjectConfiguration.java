@@ -179,7 +179,7 @@ public class ProjectConfiguration {
         return new EventClient(bootstrap, Map.of(), SUBSCRIBE_TIMEOUT);
     }
 
-    // ---- report: observers of the artifacts a failed test leaves (ProjectExtension publishes) -----------------
+    // ---- report: observers of the artifacts a failed test leaves (the runner glue publishes) ----------------
 
     @Bean
     ArtifactFiles artifactFiles() {

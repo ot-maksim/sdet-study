@@ -82,8 +82,8 @@ public final class TestScope implements Scope {
         TestBeans beans = BOUND.get();
         if (beans == null) {
             throw new IllegalStateException("'" + name + "' lives per test, but it was asked for outside a test method"
-                    + " (thread " + Thread.currentThread().getName() + "). Ask for it as a parameter of the test or of"
-                    + " @BeforeEach — not in a field, in @BeforeAll, in a run-wide bean or from another thread.");
+                    + " (thread " + Thread.currentThread().getName() + "). Ask for it as a parameter of the test method —"
+                    + " not in a field, in a once-per-class setup (@BeforeAll, @BeforeClass), in a run-wide bean or from another thread.");
         }
         return beans;
     }

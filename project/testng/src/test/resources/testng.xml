@@ -1,0 +1,39 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!--
+  The run, as Surefire starts it (pom.xml: suiteXmlFiles). What junit-platform.properties and @Isolated say in the
+  JUnit twin is said here:
+  - Parallel methods: isolation comes from unique data per test (core Unique), a browser leased per test (ui BrowserPool)
+    and no fields in test classes (one instance serves every method; ArchitectureTest). Keep thread-count <=
+    project.ui.max-browsers: ProjectListener fails project tests otherwise.
+  - One JVM (Surefire forkCount=1): a fork would be another Spring context, environment and browser pool.
+  - Classes found by package, recursively: a new test class needs no edit here. The listener's fixtures
+    (assembly.fixtures) are run by ProjectListenerTest itself, never by the suite.
+  - -Dgroups=api replaces the groups of both <test>s (one kind only; the isolated one then runs nothing);
+    -Dtest=SomeTest bypasses this file.
+  - The listeners come from META-INF/services (ProjectListener, Allure), not from a <listeners> element: they are
+    the same in an IDE run of one class.
+-->
+<suite name="project-testng" verbose="1">
+
+    <!-- Classes that swap global state (ReportingTest: Allure's lifecycle) run alone, before everything else. Listed
+         by name, not by the group: -Dgroups replaces the groups of every <test>, and a group-based list here would
+         then run the chosen kind twice. The group (Groups.ISOLATED) keeps them out of the parallel <test> -->
+    <test name="isolated" parallel="none">
+        <classes>
+            <class name="com.study.project.report.ReportingTest"/>
+        </classes>
+    </test>
+
+    <test name="parallel" parallel="methods" thread-count="4">
+        <groups>
+            <run>
+                <exclude name="isolated"/>
+            </run>
+        </groups>
+        <packages>
+            <package name="com.study.project.*">
+                <exclude name=".*\.fixtures"/>
+            </package>
+        </packages>
+    </test>
+</suite>

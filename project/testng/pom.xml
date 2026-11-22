@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.study</groupId>
+        <artifactId>project</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>project-testng</artifactId>
+    <name>project-testng</name>
+    <description>Stage 5 working test project on TestNG, the twin of project-junit (only the runner glue differs): one module, layers as packages checked by ArchUnit,
+        Spring Boot test context, Testcontainers, Kafka, Allure, an API client generated from the SUT's OpenAPI</description>
+
+    <properties>
+        <!-- The provider's contract: input of the client generator and of the run-time response validation -->
+        <sut.contract.dir>${project.basedir}/../../sut/src/main/resources</sut.contract.dir>
+        <project.rerun>0</project.rerun>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Imported here, not in the parent: the BOM also re-versions transitive dependencies (as in template/) -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- assembly: the composition root, the test scope, the runner glue (TestNG: compile scope, the glue is main code) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+        </dependency>
+
+        <!-- api: RestAssured under the generated client; response validation against the contract -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <exclusions>
+                <!-- Spring's spring-jcl provides the same API and warns about a second copy -->
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <!-- @Generated / @Nullable of the generated sources -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.atlassian.oai</groupId>
+            <artifactId>swagger-request-validator-restassured</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- api and domain: assertions with the whole exchange or the channel's view in the message -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- db -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <!-- ui (Chromium is installed once, explicitly: framework/ui/README.md) -->
+        <dependency>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+        </dependency>
+        <!-- events and the containers environment -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+        </dependency>
+        <!-- report: the TestNG listener (ServiceLoader) and the API filter; no AspectJ agent in this project -->
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-testng</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.qameta.allure</groupId>
+            <artifactId>allure-rest-assured</artifactId>
+        </dependency>
+
+        <!-- Build order only: the containers environment builds the SUT image from sut/target/sut.jar -->
+        <dependency>
+            <groupId>com.study</groupId>
+            <artifactId>sut</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- The core API only: ArchitectureTest is a TestNG test that checks the rules itself (no JUnit engine here) -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- The same file the client is generated from, on the class path for the response validation -->
+            <resource>
+                <directory>${sut.contract.dir}</directory>
+                <targetPath>contract</targetPath>
+                <includes>
+                    <include>openapi.yaml</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <!-- target/generated-sources/openapi: transport and models of the contract. Hand-written code wraps them
+                 in api/ (UserApi); nothing else may see them (ArchitectureTest) -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>sut-api</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${sut.contract.dir}/openapi.yaml</inputSpec>
+                            <generatorName>java</generatorName>
+                            <library>rest-assured</library>
+                            <invokerPackage>com.study.project.api.generated</invokerPackage>
+                            <apiPackage>com.study.project.api.generated.client</apiPackage>
+                            <modelPackage>com.study.project.api.generated.model</modelPackage>
+                            <generateApiTests>false</generateApiTests>
+                            <generateModelTests>false</generateModelTests>
+                            <generateApiDocumentation>false</generateApiDocumentation>
+                            <generateModelDocumentation>false</generateModelDocumentation>
+                            <configOptions>
+                                <sourceFolder>src/main/java</sourceFolder>
+                                <serializationLibrary>jackson</serializationLibrary>
+                                <dateLibrary>java8</dateLibrary>
+                                <useJakartaEe>true</useJakartaEe>
+                                <openApiNullable>false</openApiNullable>
+                                <annotationLibrary>none</annotationLibrary>
+                                <documentationProvider>none</documentationProvider>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <!-- The native TestNG provider, named explicitly: the parent puts JUnit Jupiter on every test class path,
+                     and auto-detection must not pick the JUnit Platform (it would ignore testng.xml). JUnit is inert
+                     here; ArchitectureTest forbids using it (a JUnit @Test in this module would never run) -->
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-testng</artifactId>
+                        <version>${surefire.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <!-- One JVM: a fork is another Spring context, environment and browser pool -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <!-- Parallelism, isolation and the test set live in the suite; -Dtest=... bypasses it -->
+                    <suiteXmlFiles>
+                        <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+                    </suiteXmlFiles>
+                    <!-- Surefire's rerunFailingTestsCount is JUnit-only: TestNG retries in-process (assembly
+                         ProjectRetry). Local runs never retry; profile ci below -->
+                    <systemPropertyVariables>
+                        <rerun.count>${project.rerun}</rerun.count>
+                        <!-- ProjectListener lists here the tests that passed only on a retry (CI summary) -->
+                        <flaky.report>${project.build.directory}/flaky-tests.txt</flaky.report>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <!-- mvn -pl project/testng allure:serve (after a run) -->
+            <plugin>
+                <groupId>io.qameta.allure</groupId>
+                <artifactId>allure-maven</artifactId>
+                <configuration>
+                    <reportVersion>${allure-report.version}</reportVersion>
+                    <resultsDirectory>allure-results</resultsDirectory>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- CI (the CI variable is set, or -Pci): a failed test gets one more attempt and is reported as flaky -->
+        <profile>
+            <id>ci</id>
+            <activation>
+                <property>
+                    <name>env.CI</name>
+                </property>
+            </activation>
+            <properties>
+                <project.rerun>1</project.rerun>
+            </properties>
+        </profile>
+    </profiles>
+</project>

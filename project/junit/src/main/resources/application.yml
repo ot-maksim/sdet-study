@@ -33,7 +33,7 @@ project:
     profile: desktop
     headless: true
     timeout: 5s
-    # Upper bound of browsers = UI tests at the same time; keep junit parallelism <= this
+    # Upper bound of browsers = UI tests at the same time; keep the runner's parallelism <= this
     max-browsers: 4
   events:
     timeout: 10s

@@ -23,11 +23,12 @@ of a session; tick items there when a topic is done.
 - `template/` — stage 4: the working template. Reuses the `framework/` layers unchanged; only the assembly is new
   (Spring Boot test context `TemplateConfiguration`, `@TestScoped` beans, `EnvironmentProvider`: `stand` | `containers`
   via Testcontainers, default). Package `com.study.template`. Spring stays in this module: never add it to `framework/`.
-- `project/` — stage 5: the working project as a team would start it, one Maven module each (`project/junit`, later
+- `project/` — stage 5: the working project as a team would start it, one Maven module each (`project/junit`,
   `project/testng`, artifact `project-<runner>`, package `com.study.project`), layers as packages enforced by
   `ArchitectureTest` (ADR 0012). Standalone: no dependency on `framework/`, `template/` or each other; the API client is
   generated from the SUT's contract `sut/src/main/resources/openapi.yaml` (ADR 0013). The runner (JUnit/TestNG) stays in
-  `assembly`.
+  `assembly` (ADR 0014): `src/main` of the twins is byte-identical except top-level `assembly/*.java` and
+  `META-INF/services` — `project/check-twins.sh` (CI) fails otherwise, so a change outside the glue goes to both.
 
 The yardstick for `framework/`, `review/`, `template/` and `project/` — properties of a good test framework, the change scenarios
 that check them, links to where each is shown: [docs/test-framework-architecture.md](docs/test-framework-architecture.md).

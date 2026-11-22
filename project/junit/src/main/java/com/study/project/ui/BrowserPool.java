@@ -147,7 +147,7 @@ public final class BrowserPool implements AutoCloseable {
                 return new Worker(playwright, browser);
             } catch (RuntimeException e) {
                 playwright.close();
-                throw new IllegalStateException("Cannot launch Chromium. Installed? See project/junit/README.md "
+                throw new IllegalStateException("Cannot launch Chromium. Installed? See framework/ui/README.md "
                         + "(Playwright CLI: install chromium). Cause: " + e.getMessage(), e);
             }
         }
