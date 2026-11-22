@@ -26,15 +26,15 @@ test may touch, where a tool may appear). The second matters only when there is 
 | Situation | Shape |
 |---|---|
 | One product, one automation team, one test repo | One module; layers are packages + ArchUnit |
-| Test kinds with different heavy dependencies or CI jobs | Modules per test kind (`api-tests`, `ui-tests`, `e2e-tests`) over one shared framework module, so API tests do not pull Playwright |
+| Test kinds (usually by channel: API, UI, E2E) that need different heavy dependencies or their own CI job | Modules per test kind (`api-tests`, `ui-tests`, `e2e-tests`) over one shared framework module, so API tests do not pull Playwright. A selection with the same dependencies (smoke vs regression, contract vs functional) is a tag, not a module |
 | Several teams or services reuse the clients | The framework is a separate, versioned library; inside it modules per channel (`-api`, `-ui`, `-db`, `-events`) so a consumer takes only what it uses |
 | Microservices with component tests next to the code | Component tests live in the service repo; the shared library gives infrastructure only (config, report, transport); E2E in its own repo |
 
 - **Share what changes rarely, keep what changes often with its owner.** Transport, configuration, reporting and
   lifecycle can be shared; domain steps and preconditions stay with the team that owns the domain, or one shared
   `UserSteps` becomes a merge-conflict and release bottleneck for five teams.
-- A new module is introduced when its consumer appears (the second team, the second test kind with its own job),
-  not in advance (YAGNI; `principles/kiss`).
+- A new module is introduced when its consumer appears (the second team, or a second test kind that needs its own
+  dependencies or CI job), not in advance (YAGNI; `principles/kiss`).
 
 ## Alternatives
 
