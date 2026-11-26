@@ -136,7 +136,7 @@ public class ArchitectureTest {
 
     static final ArchRule restAssuredOnlyInTheApiAndItsReport = noClasses().that(MAIN_CODE)
             .and().resideOutsideOfPackages("com.study.project.api..", "com.study.project.report..")
-            .should().dependOnClassesThat().resideInAnyPackage("io.restassured..", "com.atlassian.oai..")
+            .should().dependOnClassesThat().resideInAnyPackage("io.restassured..", "com.atlassian.oai..", "io.swagger..")
             .because("callers get ApiResponse and records; the report hands the transport a filter");
 
     static final ArchRule playwrightOnlyInTheUi = onlyIn("com.microsoft.playwright..", "com.study.project.ui..")
@@ -152,7 +152,7 @@ public class ArchitectureTest {
     /** Tests speak the domain: a change of transport, schema, markup, environment or report must not touch one. */
     static final ArchRule testsDoNotTouchTheTransportOrTheTools = noClasses().that(ASSEMBLY_TESTS)
             .should().dependOnClassesThat(resideInAnyPackage(
-                    "io.restassured..", "com.atlassian.oai..", "com.microsoft.playwright..", "java.sql..", "javax.sql..",
+                    "io.restassured..", "com.atlassian.oai..", "io.swagger..", "com.microsoft.playwright..", "java.sql..", "javax.sql..",
                     "com.study.sut..", "com.study.project.db..", "com.study.project.api.generated..",
                     "com.study.project.environment..", "com.study.project.report..", "com.study.project.assembly.scope..",
                     "org.testcontainers..", "io.qameta.allure..", "org.apache.kafka..", "org.springframework..")

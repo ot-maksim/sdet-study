@@ -3,6 +3,7 @@ package com.study.project.assembly;
 import com.study.project.api.ApiSettings;
 import com.study.project.api.ApiTransport;
 import com.study.project.api.Contract;
+import com.study.project.api.ContractCoverage;
 import com.study.project.api.ContractFilter;
 import com.study.project.api.SutHealth;
 import com.study.project.api.users.NewUsers;
@@ -31,6 +32,7 @@ import com.study.project.report.AllureArtifacts;
 import com.study.project.report.ApiReport;
 import com.study.project.report.ArtifactFiles;
 import com.study.project.report.ArtifactListener;
+import com.study.project.report.ContractCoverageFile;
 import com.study.project.report.ContractReport;
 import com.study.project.report.Artifacts;
 import com.study.project.report.ReportingUserPrecondition;
@@ -50,6 +52,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesBindin
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.convert.converter.Converter;
 
 /**
@@ -63,6 +66,7 @@ import org.springframework.core.convert.converter.Converter;
  *   EnvironmentProvider (stand | containers) ── SutEnvironment ── ApiTransport ── UserApi    Unique ── NewUsers
  *                                                    │             (contract reported, report)  SutHealth
  *   Contract (openapi.yaml) ── the contract filter, the contract tests
+ *     └── ContractCoverage (every call) ── ContractCoverageFile (target/contract-coverage.md when the run ends)
  *                                                    ├── Database ── UserRows ── UserChecks
  *                                                    ├── UiSettings ── BrowserPool            Clock
  *                                                    └── EventClient (one consumer thread per run)
@@ -129,9 +133,25 @@ public class ProjectConfiguration {
      * broken step and never fails the call: the verdict on the contract is the contract tests' (ADR 0015).
      */
     @Bean
-    ApiTransport apiTransport(SutEnvironment environment, ProjectProperties properties, Contract contract) {
+    ApiTransport apiTransport(SutEnvironment environment, ProjectProperties properties, Contract contract, ContractCoverage coverage) {
         return new ApiTransport(new ApiSettings(environment.sutUrl(), properties.api().timeout()),
-                List.of(new ContractFilter(contract, new ContractReport()), ApiReport.exchanges()));
+                List.of(new ContractFilter(contract, coverage, new ContractReport()), ApiReport.exchanges()));
+    }
+
+    /** Which responses of the contract the whole run has seen: one per run, every call counts. */
+    @Bean
+    ContractCoverage contractCoverage(Contract contract) {
+        return new ContractCoverage(contract);
+    }
+
+    /**
+     * {@code @Lazy(false)}: nothing asks for it, it only waits for the run to end; {@code close} inferred, called
+     * when the context closes (the end of the run) and writes the report.
+     */
+    @Bean
+    @Lazy(false)
+    ContractCoverageFile contractCoverageFile(ContractCoverage coverage) {
+        return new ContractCoverageFile(coverage, Path.of("target", "contract-coverage.md"));
     }
 
     @Bean

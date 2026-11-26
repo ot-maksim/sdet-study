@@ -24,7 +24,7 @@ flowchart TB
     env["environment<br/>stand | containers<br/><i>Testcontainers</i>"]
     domain["domain<br/>UserSteps · UserPrecondition (api|db) · UserChecks"]
     events["events<br/>EventClient · UserEvents<br/><i>Kafka</i>"]
-    api["api<br/>ApiTransport · Contract · ContractFilter · UserApi<br/>generated/ (target/generated-sources)<br/><i>RestAssured, validator</i>"]
+    api["api<br/>ApiTransport · Contract · ContractFilter · ContractCoverage · UserApi<br/>generated/ (target/generated-sources)<br/><i>RestAssured, validator</i>"]
     db["db<br/>Database · UserRows<br/><i>JDBC</i>"]
     ui["ui<br/>BrowserPool · UsersPage<br/><i>Playwright</i>"]
     core["core<br/>Secret · Unique · Cleanup/Scope"]
@@ -64,7 +64,8 @@ event payload is the API's user, so it is parsed into the same record.
 | `api/ApiTransport` | the generated client configured once per run; `send(client -> client.users().getUser().idPath(7))` → `ApiResponse` with the exchange |
 | `api/Exchange` | a per-call filter that records request and response; why: failure messages without a debugger |
 | `api/Contract` | response validation only; requests are negative-test material |
-| `api/ContractFilter` | every response of the run checked and reported, never failed (ADR 0015) |
+| `api/ContractFilter` | every response of the run checked and reported, never failed; every call counted in `ContractCoverage` (ADR 0015) |
+| `target/contract-coverage.md` | after a run: each response of the contract with its number of calls, `never seen`, and what the contract does not declare (`report/ContractCoverageFile`) |
 | `api/users/UserApi` | the anti-corruption layer: generated models in, project records out |
 | `assembly/ProjectConfiguration` | the root; filters order: contract outermost, report, recorder innermost |
 | `report/ApiReport` | the Allure filter handed to the transport: the api layer runs it without knowing Allure |

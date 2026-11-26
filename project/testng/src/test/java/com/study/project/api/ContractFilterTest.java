@@ -37,6 +37,7 @@ public class ContractFilterTest {
 
     private final Contract contract = Contract.fromClasspath("contract/openapi.yaml");
     private final AtomicReference<Answer> answer = new AtomicReference<>();
+    private ContractCoverage coverage;
     private final List<ContractViolation> reported = new CopyOnWriteArrayList<>();
     private HttpServer sut;
     private ApiTransport transport;
@@ -47,7 +48,8 @@ public class ContractFilterTest {
 
     @BeforeMethod
     public void startFakeSut() throws IOException {
-        reported.clear();   // one instance for all methods: fresh per test by hand
+        coverage = new ContractCoverage(contract);   // one instance for all methods: fresh per test by hand
+        reported.clear();
         sut = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         sut.createContext("/", exchange -> {
             Answer next = answer.get();
@@ -64,7 +66,7 @@ public class ContractFilterTest {
         });
         sut.start();
         ApiSettings settings = new ApiSettings(URI.create("http://localhost:" + sut.getAddress().getPort()), Duration.ofSeconds(5));
-        transport = new ApiTransport(settings, List.of(new ContractFilter(contract, reported::add)));
+        transport = new ApiTransport(settings, List.of(new ContractFilter(contract, coverage, reported::add)));
         users = new UserApi(transport);
     }
 
@@ -161,6 +163,35 @@ public class ContractFilterTest {
         // The path still finds its operation, so the check is not vacuous: a body without "message" breaks it
         answer.set(new Answer(400, "{\"error\":\"id_invalid\"}"));
         assertThat(contract.violations(users.tryGet("abc"))).anySatisfy(problem -> assertThat(problem).contains("message"));
+    }
+
+    @Test
+    public void theCoverageCountsEveryCallByTheOperationItGoesTo() {
+        answer.set(new Answer(200, ADA));
+        users.tryGet(7);
+        users.tryGet(8);
+        answer.set(new Answer(400, "{\"error\":\"id_invalid\",\"message\":\"Id must be a number: abc\"}"));
+        users.tryDelete("abc");
+
+        assertThat(coverage.calls()).isEqualTo(3);
+        assertThat(coverage.missing()).contains("GET /health 200", "POST /api/users 201", "DELETE /api/users/{id} 204")
+                .doesNotContain("GET /api/users/{id} 200", "DELETE /api/users/{id} 400");
+        assertThat(coverage.report())
+                .contains("2 of 11 responses of openapi.yaml seen in 3 calls")
+                .contains("| GET /api/users/{id} 200 | 2 |")
+                .contains("| DELETE /api/users/{id} 400 | 1 |")
+                .contains("| GET /health 200 | 0 — never seen |")
+                .doesNotContain("not in the contract");
+    }
+
+    @Test
+    public void aResponseTheContractDoesNotDeclareIsListedApart() {
+        answer.set(new Answer(200, ADA));
+        users.tryCreate(new NewUser("Ada", "ada@example.test", 30, "DE"));
+        transport.send(api -> api.users().getUser().reqSpec(spec -> spec.setBasePath("/api/admin")).idPath(7));
+
+        assertThat(coverage.undeclared()).containsExactly("GET /api/admin/api/users/7 200", "POST /api/users 200");
+        assertThat(coverage.report()).contains("Seen but not in the contract").contains("- POST /api/users 200 — 1 calls");
     }
 
     @Test

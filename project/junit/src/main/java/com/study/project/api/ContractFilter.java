@@ -14,16 +14,19 @@ import java.util.function.Consumer;
  * Checks every response of the run against the {@link Contract} and <b>reports</b> what breaks it; it never fails
  * the call (ADR 0015). A functional test is judged by its own assertions: a drift in a field it does not look at
  * must not hide whether the feature works. The verdict on the contract belongs to the contract tests
- * ({@code UsersContractTest}); here a violation is a hint in the report of the test that met it.
+ * ({@code UsersContractTest}); here a violation is a hint in the report of the test that met it. Every call is also
+ * counted in the run's {@link ContractCoverage}.
  */
 public final class ContractFilter implements Filter {
 
     private final Contract contract;
+    private final ContractCoverage coverage;
     private final Consumer<ContractViolation> observer;
 
     /** @param observer gets each violation (the root hands the report's); called on the calling thread */
-    public ContractFilter(Contract contract, Consumer<ContractViolation> observer) {
+    public ContractFilter(Contract contract, ContractCoverage coverage, Consumer<ContractViolation> observer) {
         this.contract = contract;
+        this.coverage = coverage;
         this.observer = observer;
     }
 
@@ -31,6 +34,7 @@ public final class ContractFilter implements Filter {
     public Response filter(FilterableRequestSpecification request, FilterableResponseSpecification responseSpec, FilterContext context) {
         Response response = context.next(request, responseSpec);
         String path = URI.create(request.getURI()).getRawPath();
+        coverage.record(request.getMethod(), path, response.statusCode());
         List<String> problems = contract.violations(request.getMethod(), path, RestAssuredResponse.of(response));
         if (!problems.isEmpty()) {
             observer.accept(new ContractViolation(request.getMethod() + " " + path + " -> " + response.statusCode(), problems));

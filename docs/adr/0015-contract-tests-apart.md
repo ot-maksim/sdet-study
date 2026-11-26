@@ -39,6 +39,12 @@ answered by the SUT's parsing code, where a drift of the body is most likely and
 - **`ContractFilter` reports, never fails.** It still checks every response of the run and hands each violation to
   an observer; the root passes `ContractReport`, a **broken Allure step** in the test that met it. The test keeps the
   verdict of its own assertions; the drift is visible next to it.
+- **Contract coverage is a report of the whole run.** `ContractFilter` also counts every call in `ContractCoverage`
+  by the operation it goes to (`GET /api/users/abc` → `GET /api/users/{id}`) and its status; when the run ends (the
+  Spring context closes) `ContractCoverageFile` writes `target/contract-coverage.md`: each declared response with its
+  number of calls, `never seen` for the rest, and the responses the SUT gave that the contract does not declare. A
+  report, not a verdict: the end of a run is too late to fail a test, and a partial run (`-Dgroups=ui`) always looks
+  incomplete. Same in both twins: the hook is the context's close, not the runner's.
 - `UserApi` got `try*` for every operation (`tryGet(String id)`, `tryCreate(String rawJson)`, …) and `SutHealth` a
   `check()`: the contract tests need the response whatever it is, also for requests the client would never build.
 
@@ -70,7 +76,7 @@ is a question for the provider (a gap in the contract), not a test of ours.
 |---|---|
 | Keep failing every call (ADR 0013) | The problem above: a minor drift blocks the functional signal |
 | One contract test | Checks one response; the others (errors, parsing branches) stay unseen |
-| Collect violations from all traffic, one verdict test at the end of the run | No duplicated calls, and contract coverage for free; but the verdict must run last — fragile under JUnit's parallel classes (a `ClassOrderer` orders within one thread), runner-specific in both twins — and a local run of one test has no verdict at all. Worth it with a large API where enumerating responses does not scale |
+| Collect violations from all traffic, one verdict test at the end of the run | No duplicated calls (the coverage part is taken: a report, not a verdict); but the verdict must run last — fragile under JUnit's parallel classes (a `ClassOrderer` orders within one thread), runner-specific in both twins — and a local run of one test has no verdict at all. Worth it with a large API where enumerating responses does not scale |
 | No check in functional tests at all | Loses the hint "this test met a drift" that costs nothing at run time |
 | Lower some rules to WARN (`LevelResolver`) | Decides what counts as minor, not who blocks whom; complementary |
 | Pact / Schemathesis | Consumer-driven contracts pay off with several consumers; fuzzing explores what this matrix enumerates. Both complementary, a heavier tool for one consumer |
@@ -83,8 +89,8 @@ is a question for the provider (a gap in the contract), not a test of ours.
   covered.
 - \+ The status-first rule makes each contract test prove it reached its branch: a SUT that answers `200` where `404`
   was meant is a red contract test, not a schema check of the wrong response.
-- − A new operation or status in `openapi.yaml` needs a new row by hand; nothing reports a row that is missing.
-  The collecting alternative would; it is the next step if the API grows.
+- − A new operation or status in `openapi.yaml` needs a new row by hand. The coverage report shows it as
+  `never seen` until someone adds it; it does not fail the build (see the decision).
 - − Some calls are made twice in a run (a created user in a functional test and in the contract test): a few
   milliseconds each.
 - − A violation in a functional test is a broken step, not a red test: someone has to look at the report. The

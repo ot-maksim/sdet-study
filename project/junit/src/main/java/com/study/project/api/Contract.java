@@ -5,14 +5,20 @@ import com.atlassian.oai.validator.model.Request;
 import com.atlassian.oai.validator.model.Response;
 import com.atlassian.oai.validator.model.SimpleResponse;
 import com.atlassian.oai.validator.report.ValidationReport;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -27,9 +33,19 @@ import java.util.stream.Collectors;
 public final class Contract {
 
     private final OpenApiInteractionValidator validator;
+    private final List<Operation> operations;
 
-    private Contract(OpenApiInteractionValidator validator) {
+    private Contract(OpenApiInteractionValidator validator, List<Operation> operations) {
         this.validator = validator;
+        this.operations = List.copyOf(operations);
+    }
+
+    /** {@code GET /api/users/{id}} with its declared statuses. */
+    private record Operation(String method, String template, Pattern path, List<String> statuses) {
+
+        String name() {
+            return method + " " + template;
+        }
     }
 
     /** The file copied next to the classes by the build ({@code contract/openapi.yaml}): the one the client was generated from. */
@@ -45,7 +61,46 @@ public final class Contract {
     }
 
     public static Contract fromSpecification(String openApiYaml) {
-        return new Contract(OpenApiInteractionValidator.createForInlineApiSpecification(openApiYaml).build());
+        return new Contract(OpenApiInteractionValidator.createForInlineApiSpecification(openApiYaml).build(),
+                operations(openApiYaml));
+    }
+
+    /** Every response the contract declares, {@code GET /api/users/{id} 404}: paths in the file's order, methods by HTTP verb. */
+    public List<String> responses() {
+        return operations.stream()
+                .flatMap(operation -> operation.statuses().stream().map(status -> operation.name() + " " + status))
+                .toList();
+    }
+
+    /**
+     * The operation a call goes to, {@code GET /api/users/{id}} for {@code GET /api/users/abc}: by the shape of the
+     * path, as the SUT's router finds it, not by the parameter's type. Empty if the contract has no such operation.
+     */
+    Optional<String> operation(String method, String path) {
+        String rawPath = URI.create(path).getRawPath();
+        List<Operation> candidates = operations.stream()
+                .filter(operation -> operation.method().equals(method) && operation.path().matcher(rawPath).matches())
+                .toList();
+        // A literal path wins over a template (/api/users/me over /api/users/{id}), as in OpenAPI's own matching
+        return candidates.stream().filter(operation -> !operation.template().contains("{")).findFirst()
+                .or(() -> candidates.stream().findFirst())
+                .map(Operation::name);
+    }
+
+    private static List<Operation> operations(String openApiYaml) {
+        OpenAPI api = new OpenAPIV3Parser().readContents(openApiYaml).getOpenAPI();
+        if (api == null || api.getPaths() == null) {
+            throw new IllegalArgumentException("Not an OpenAPI 3 document with paths");
+        }
+        List<Operation> operations = new ArrayList<>();
+        api.getPaths().forEach((template, item) -> {
+            Pattern path = Pattern.compile(Arrays.stream(template.split("/", -1))
+                    .map(segment -> segment.startsWith("{") && segment.endsWith("}") ? "[^/]+" : Pattern.quote(segment))
+                    .collect(Collectors.joining("/")));
+            item.readOperationsMap().forEach((method, operation) -> operations.add(new Operation(
+                    method.name(), template, path, List.copyOf(operation.getResponses().keySet()))));
+        });
+        return operations;
     }
 
     /** What in this response breaks the contract, one line per problem; empty if it is as the contract says. */

@@ -48,7 +48,7 @@ flowchart LR
 | Flaky | Surefire XML `flakyFailure` | retried attempt = skipped "retried"; `target/flaky-tests.txt` | |
 | Parallelism | `junit-platform.properties` | `testng.xml` `parallel="methods" thread-count="4"` | |
 | Isolation | `@Isolated` | group `isolated` + the class listed in its own `<test>`, run first | `-Dgroups` replaces groups of every `<test>` |
-| Class needing fields | — (instance per method) | `@Test(singleThreaded = true)` | `ContractFilterTest`, `TestScopeTest`, `ReportingTest` |
+| Class needing fields | — (instance per method) | `@Test(singleThreaded = true)`, fresh fields in `@BeforeMethod` | `ContractFilterTest`, `TestScopeTest`, `ReportingTest` |
 | `@TempDir`, assumptions | JUnit built-ins | `Files.createTempDirectory`, `SkipException` | |
 | Allure | `allure-junit-platform` | `allure-testng` | both via ServiceLoader |
 | Surefire provider | JUnit Platform (auto) | `surefire-testng`, named in the pom | the parent puts Jupiter on every class path |
