@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.study.project.api.ApiSettings;
 import com.study.project.api.ApiTransport;
+import com.study.project.api.ContractViolation;
 import com.study.project.api.users.NewUsers;
 import com.study.project.api.users.UserApi;
 import com.study.project.assembly.Groups;
@@ -90,6 +91,19 @@ public class ReportingTest {
         assertThat(test.getAttachments()).hasSize(2);
         assertThat(results.attachment(test.getAttachments().get(0))).contains("/api/users");
         assertThat(results.attachment(test.getAttachments().get(1))).contains("200");
+    }
+
+    @Test
+    public void aContractViolationIsABrokenStepAndTheTestKeepsItsOwnVerdict() {
+        new ContractReport().accept(new ContractViolation("GET /api/users/7 -> 200", List.of("Object has missing required properties ([\"createdAt\"])")));
+
+        TestResult test = written();
+        assertThat(test.getStatus()).isNotIn(Status.FAILED, Status.BROKEN);
+        assertThat(test.getSteps()).singleElement().satisfies(step -> {
+            assertThat(step.getName()).isEqualTo("contract violation: GET /api/users/7 -> 200");
+            assertThat(step.getStatus()).isEqualTo(Status.BROKEN);
+            assertThat(step.getStatusDetails().getMessage()).contains("createdAt");
+        });
     }
 
     @Test

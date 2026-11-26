@@ -18,13 +18,13 @@ a copy of those modules; what changed is listed below.
 
 ```mermaid
 flowchart TB
-    tests["tests (src/test)<br/>UsersApiTest · UsersPageTest · UserJourneyE2eTest · UserEventsE2eTest"]
+    tests["tests (src/test)<br/>UsersApiTest · UsersContractTest · UsersPageTest · UserJourneyE2eTest · UserEventsE2eTest"]
     assembly["assembly<br/>ProjectConfiguration (root) · ProjectExtension · kinds · scope<br/><i>Spring, JUnit</i>"]
     report["report<br/>decorators · ApiReport filter · artifacts<br/><i>Allure</i>"]
     env["environment<br/>stand | containers<br/><i>Testcontainers</i>"]
     domain["domain<br/>UserSteps · UserPrecondition (api|db) · UserChecks"]
     events["events<br/>EventClient · UserEvents<br/><i>Kafka</i>"]
-    api["api<br/>ApiTransport · ContractFilter · UserApi<br/>generated/ (target/generated-sources)<br/><i>RestAssured, validator</i>"]
+    api["api<br/>ApiTransport · Contract · ContractFilter · UserApi<br/>generated/ (target/generated-sources)<br/><i>RestAssured, validator</i>"]
     db["db<br/>Database · UserRows<br/><i>JDBC</i>"]
     ui["ui<br/>BrowserPool · UsersPage<br/><i>Playwright</i>"]
     core["core<br/>Secret · Unique · Cleanup/Scope"]
@@ -49,7 +49,7 @@ event payload is the API's user, so it is parsed into the same record.
 |---|---|---|---|
 | Layout | stage 2 modules reused + assembly module | one module, packages | ADR 0012: one consumer, one team |
 | API client | hand-written `ApiClient` (paths, DTOs) | generated operations and models, hand-written `ApiTransport` + `UserApi` over them | ADR 0013: the shape cannot drift from the contract |
-| Contract | none | `ContractFilter`: every response validated against `openapi.yaml` | drift is a red test with a report, not a surprise |
+| Contract | none | `UsersContractTest`: one test per response of `openapi.yaml`; `ContractFilter` reports a drift met by any other test as a broken step (ADR 0015) | drift is one red contract test with a report, and does not block the functional verdicts |
 | Report of steps | decorators + AspectJ load-time weaving (stage 2 classes are final, no seams) | decorators + `AllureRestAssured` filter; no `UserSteps` step, no agent | the code is ours: seams instead of weaving; `UserSteps` is made of reported actions |
 | Environment settings | records inside `TemplateProperties` | `StandSettings`, `ContainersSettings` in `environment` | the environment does not depend on the assembly |
 | Health probe | `ApiClient.get("/health")` | `SutHealth` (generated operation stays in `api`) | found by `ArchitectureTest` |
@@ -63,12 +63,14 @@ event payload is the API's user, so it is parsed into the same record.
 | `pom.xml` | generator config (`rest-assured`, Jackson, jakarta, no nullable wrappers); the contract copied to `contract/` on the class path |
 | `api/ApiTransport` | the generated client configured once per run; `send(client -> client.users().getUser().idPath(7))` → `ApiResponse` with the exchange |
 | `api/Exchange` | a per-call filter that records request and response; why: failure messages without a debugger |
-| `api/ContractFilter` | response validation only; requests are negative-test material |
+| `api/Contract` | response validation only; requests are negative-test material |
+| `api/ContractFilter` | every response of the run checked and reported, never failed (ADR 0015) |
 | `api/users/UserApi` | the anti-corruption layer: generated models in, project records out |
 | `assembly/ProjectConfiguration` | the root; filters order: contract outermost, report, recorder innermost |
 | `report/ApiReport` | the Allure filter handed to the transport: the api layer runs it without knowing Allure |
 | `ArchitectureTest` | layers in one module; generated client only in `api`; each tool in its package (Spring, JUnit → `assembly`; Testcontainers → `environment`; Allure → `report`; Kafka → `events`, `environment`; RestAssured → `api`, `report`; Playwright → `ui`; JDBC → `db`); test rules (no transport, no `new` of services, no base class, one kind, no Spring) |
-| `api/ContractFilterTest` | the contract check on a fake SUT: missing field, unknown error code, undeclared status, a forbidden request still sent |
+| `api/ContractFilterTest` | the contract check on a fake SUT: missing field, unknown error code, undeclared status — reported by the filter, failed by `conformsTo`; a forbidden request still sent |
+| `tests/UsersContractTest` | the contract tests: 14 responses (operation × status × body), status first, then `conformsTo`; the matrix in ADR 0015 |
 | `tests/*` | the same test bodies as `template/`, only the imports differ |
 
 ## Run
@@ -76,7 +78,7 @@ event payload is the API's user, so it is parsed into the same record.
 ```
 mvn -q -pl sut -am package -DskipTests                               # the SUT image is built from sut/target/sut.jar
 mvn -q -pl project/junit verify                                      # hermetic: needs only Docker (and Chromium)
-mvn -q -pl project/junit verify -Dgroups=api                         # one kind: api, ui, e2e, events
+mvn -q -pl project/junit verify -Dgroups=api                         # one kind: api, contract, ui, e2e, events
 mvn -q -pl project/junit verify -Dspring.profiles.active=mobile,db   # phone context, DB preconditions
 mvn -q -pl project/junit verify -Dspring.profiles.active=stand       # against docker compose (sut/README.md)
 mvn -q -pl project/junit test -Dtest='ArchitectureTest,ContractFilterTest' -Dsurefire.failIfNoSpecifiedTests=false

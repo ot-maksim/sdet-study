@@ -40,6 +40,21 @@ public final class ApiResponse {
         return status;
     }
 
+    /** {@code GET}; for the contract check. */
+    String method() {
+        return method;
+    }
+
+    /** The raw path with the query, as sent; for the contract check. */
+    String path() {
+        return path;
+    }
+
+    /** Every header in the order received; for the contract check. */
+    List<Map.Entry<String, String>> allHeaders() {
+        return headers;
+    }
+
     public String body() {
         return body;
     }

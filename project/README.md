@@ -16,7 +16,7 @@ Both pass the same 4 test classes (API, UI, E2E, events) on Testcontainers + Chr
 | Decision | What | ADR |
 |---|---|---|
 | One module, layers as packages | no Maven module per layer; `ArchitectureTest` enforces the dependency direction and where each tool may appear | [0012](../docs/adr/0012-module-granularity.md) |
-| Client from the contract | operations and models generated from the SUT's `sut/src/main/resources/openapi.yaml`, wrapped by hand (`ApiTransport`, `UserApi`); every response validated against the same file (`ContractFilter`) | [0013](../docs/adr/0013-openapi-client.md) |
+| Client from the contract | operations and models generated from the SUT's `sut/src/main/resources/openapi.yaml`, wrapped by hand (`ApiTransport`, `UserApi`); contract tests apart (`UsersContractTest`, kind `contract`), every other response only reported against the same file (`ContractFilter`) | [0013](../docs/adr/0013-openapi-client.md), [0015](../docs/adr/0015-contract-tests-apart.md) |
 | The runner is assembly glue | JUnit or TestNG only in `assembly/`; the twins differ there and nowhere else in `src/main` | [0014](../docs/adr/0014-junit-vs-testng.md) |
 
 ## Layout of each project
@@ -24,7 +24,7 @@ Both pass the same 4 test classes (API, UI, E2E, events) on Testcontainers + Chr
 ```
 com.study.project
 ├── core          Secret, Unique, Cleanup / Scope                      (no tools)
-├── api           ApiTransport, ContractFilter, UserApi; generated/ in target/generated-sources
+├── api           ApiTransport, Contract, ContractFilter, UserApi; generated/ in target/generated-sources
 ├── db            Database, UserRows                                   (JDBC)
 ├── ui            BrowserPool, UiSession, UsersPage                    (Playwright)
 ├── events        EventClient, UserEvents                              (Kafka)

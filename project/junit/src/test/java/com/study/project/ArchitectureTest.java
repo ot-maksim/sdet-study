@@ -11,6 +11,7 @@ import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import com.study.project.api.ApiTransport;
 import com.study.project.api.ContractFilter;
 import com.study.project.assembly.ApiTests;
+import com.study.project.assembly.ContractTests;
 import com.study.project.assembly.E2eTests;
 import com.study.project.assembly.EventTests;
 import com.study.project.assembly.ProjectConfiguration;
@@ -65,7 +66,7 @@ class ArchitectureTest {
                     && type.isMetaAnnotatedWith(ProjectTest.class)
                     && type.getMethods().stream().anyMatch(method -> method.isMetaAnnotatedWith(Testable.class)));
 
-    private static final List<Class<?>> TEST_KINDS = List.of(ApiTests.class, UiTests.class, E2eTests.class, EventTests.class);
+    private static final List<Class<?>> TEST_KINDS = List.of(ApiTests.class, ContractTests.class, UiTests.class, E2eTests.class, EventTests.class);
 
     // ---- layers ----------------------------------------------------------------------------------------------
 
@@ -180,7 +181,7 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule testsAreOfExactlyOneKind = classes().that(ASSEMBLY_TESTS)
-            .should(new ArchCondition<>("be annotated with exactly one of @ApiTests, @UiTests, @E2eTests, @EventTests") {
+            .should(new ArchCondition<>("be annotated with exactly one of @ApiTests, @ContractTests, @UiTests, @E2eTests, @EventTests") {
                 @Override
                 public void check(JavaClass test, ConditionEvents events) {
                     long kinds = TEST_KINDS.stream().filter(kind -> test.isAnnotatedWith(kind.getName())).count();

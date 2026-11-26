@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,15 +22,18 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The contract check on a fake SUT that answers what each test tells it to (no Docker): a response that drifts from
- * {@code openapi.yaml} fails the call with the report and the exchange; a request that breaks the contract on
- * purpose (a negative test) does not.
+ * {@code openapi.yaml} is a violation — reported by the filter without failing the call, failed by
+ * {@code conformsTo} in a contract test (ADR 0015); a request that breaks the contract on purpose (a negative test)
+ * is neither.
  */
 class ContractFilterTest {
 
     private static final String ADA = """
             {"id":7,"name":"Ada","email":"ada@example.test","age":30,"country":"DE","createdAt":"2026-11-22T10:15:30.123456Z"}""";
 
+    private final Contract contract = Contract.fromClasspath("contract/openapi.yaml");
     private final AtomicReference<Answer> answer = new AtomicReference<>();
+    private final List<ContractViolation> reported = new CopyOnWriteArrayList<>();
     private HttpServer sut;
     private ApiTransport transport;
     private UserApi users;
@@ -55,7 +59,7 @@ class ContractFilterTest {
         });
         sut.start();
         ApiSettings settings = new ApiSettings(URI.create("http://localhost:" + sut.getAddress().getPort()), Duration.ofSeconds(5));
-        transport = new ApiTransport(settings, List.of(ContractFilter.fromClasspath("contract/openapi.yaml")));
+        transport = new ApiTransport(settings, List.of(new ContractFilter(contract, reported::add)));
         users = new UserApi(transport);
     }
 
@@ -65,20 +69,35 @@ class ContractFilterTest {
     }
 
     @Test
-    void aResponseAsTheContractSaysIsMappedToTheProjectsRecord() {
+    void aResponseAsTheContractSaysIsMappedToTheProjectsRecordAndNothingIsReported() {
         answer.set(new Answer(200, ADA));
 
         assertThat(users.get(7)).isEqualTo(new User(7, "Ada", "ada@example.test", 30, "DE",
                 Instant.parse("2026-11-22T10:15:30.123456Z")));
+        assertThat(reported).isEmpty();
+        ApiResponseAssert.assertThat(users.tryGet(7)).hasStatus(200).conformsTo(contract);
     }
 
     @Test
-    void aMissingRequiredFieldFailsTheCallWithTheReportAndTheExchange() {
+    void aMissingRequiredFieldIsReportedWithoutFailingTheCall() {
         answer.set(new Answer(200, ADA.replace(",\"createdAt\":\"2026-11-22T10:15:30.123456Z\"", "")));
 
-        assertThatThrownBy(() -> users.get(7))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("breaks the SUT's contract")
+        ApiResponse response = users.tryGet(7);
+
+        assertThat(response.status()).isEqualTo(200);
+        assertThat(reported).singleElement().satisfies(violation -> {
+            assertThat(violation.call()).isEqualTo("GET /api/users/7 -> 200");
+            assertThat(violation.toString()).contains("breaks the SUT's contract").contains("createdAt");
+        });
+    }
+
+    @Test
+    void aContractTestFailsOnTheSameDriftWithTheReportAndTheExchange() {
+        answer.set(new Answer(200, ADA.replace(",\"createdAt\":\"2026-11-22T10:15:30.123456Z\"", "")));
+
+        assertThatThrownBy(() -> ApiResponseAssert.assertThat(users.tryGet(7)).hasStatus(200).conformsTo(contract))
+                .isInstanceOf(AssertionError.class)
+                .hasMessageContaining("keep the SUT's contract")
                 .hasMessageContaining("createdAt")
                 .hasMessageContaining("GET /api/users/7");
     }
@@ -87,18 +106,29 @@ class ContractFilterTest {
     void aNewErrorCodeIsAContractChange() {
         answer.set(new Answer(400, "{\"error\":\"age_negative\",\"message\":\"Age must not be negative\"}"));
 
-        assertThatThrownBy(() -> users.tryCreate(new NewUser("Ada", "ada@example.test", -1, "DE")))
-                .hasMessageContaining("breaks the SUT's contract")
-                .hasMessageContaining("age_negative");
+        ApiResponse response = users.tryCreate(new NewUser("Ada", "ada@example.test", -1, "DE"));
+
+        assertThat(contract.violations(response)).anySatisfy(problem -> assertThat(problem).contains("age_negative"));
+        assertThat(reported).hasSize(1);
     }
 
     @Test
     void aStatusTheOperationDoesNotDeclareIsAContractChange() {
         answer.set(new Answer(200, ADA));
 
-        assertThatThrownBy(() -> users.tryCreate(new NewUser("Ada", "ada@example.test", 30, "DE")))
-                .hasMessageContaining("breaks the SUT's contract")
-                .hasMessageContaining("200");
+        ApiResponse response = users.tryCreate(new NewUser("Ada", "ada@example.test", 30, "DE"));
+
+        assertThat(contract.violations(response)).anySatisfy(problem -> assertThat(problem).contains("200"));
+        assertThat(reported).singleElement().extracting(ContractViolation::call).isEqualTo("POST /api/users -> 200");
+    }
+
+    /** The query is not part of the path an operation is found by. */
+    @Test
+    void aCallWithAQueryIsCheckedAgainstItsOperation() {
+        answer.set(new Answer(200, "[" + ADA + "]"));
+
+        ApiResponseAssert.assertThat(users.tryFindByEmail("ada@example.test")).hasStatus(200).conformsTo(contract);
+        assertThat(reported).isEmpty();
     }
 
     @Test
@@ -109,6 +139,23 @@ class ContractFilterTest {
 
         assertThat(response.isError(400, "age_too_low")).isTrue();
         assertThat(response.toString()).contains("POST /api/users").contains("\"age\":17").doesNotContain("country");
+        assertThat(reported).isEmpty();
+    }
+
+    /** What the contract tests send that the client would never build. */
+    @Test
+    void malformedJsonAndAnIdThatIsNotANumberGoOutAsWritten() {
+        answer.set(new Answer(400, "{\"error\":\"malformed_json\",\"message\":\"Body is not a valid user JSON\"}"));
+        assertThat(users.tryCreate("{\"name\":").toString()).contains("POST /api/users {\"name\":");
+
+        answer.set(new Answer(400, "{\"error\":\"id_invalid\",\"message\":\"Id must be a number: abc\"}"));
+        ApiResponseAssert.assertThat(users.tryGet("abc")).hasStatus(400).conformsTo(contract);
+        assertThat(users.tryDelete("abc").toString()).contains("DELETE /api/users/abc");
+        assertThat(reported).isEmpty();
+
+        // The path still finds its operation, so the check is not vacuous: a body without "message" breaks it
+        answer.set(new Answer(400, "{\"error\":\"id_invalid\"}"));
+        assertThat(contract.violations(users.tryGet("abc"))).anySatisfy(problem -> assertThat(problem).contains("message"));
     }
 
     @Test

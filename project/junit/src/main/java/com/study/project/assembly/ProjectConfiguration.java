@@ -2,7 +2,9 @@ package com.study.project.assembly;
 
 import com.study.project.api.ApiSettings;
 import com.study.project.api.ApiTransport;
+import com.study.project.api.Contract;
 import com.study.project.api.ContractFilter;
+import com.study.project.api.SutHealth;
 import com.study.project.api.users.NewUsers;
 import com.study.project.api.users.UserApi;
 import com.study.project.assembly.scope.TestScope;
@@ -29,6 +31,7 @@ import com.study.project.report.AllureArtifacts;
 import com.study.project.report.ApiReport;
 import com.study.project.report.ArtifactFiles;
 import com.study.project.report.ArtifactListener;
+import com.study.project.report.ContractReport;
 import com.study.project.report.Artifacts;
 import com.study.project.report.ReportingUserPrecondition;
 import com.study.project.report.ReportingUsersScreen;
@@ -58,7 +61,8 @@ import org.springframework.core.convert.converter.Converter;
  * <pre>
  * run  (singleton, lazy: spring.main.lazy-initialization)
  *   EnvironmentProvider (stand | containers) ── SutEnvironment ── ApiTransport ── UserApi    Unique ── NewUsers
- *                                                    │             (contract check, report)
+ *                                                    │             (contract reported, report)  SutHealth
+ *   Contract (openapi.yaml) ── the contract filter, the contract tests
  *                                                    ├── Database ── UserRows ── UserChecks
  *                                                    ├── UiSettings ── BrowserPool            Clock
  *                                                    └── EventClient (one consumer thread per run)
@@ -114,11 +118,25 @@ public class ProjectConfiguration {
 
     // ---- run: shared by parallel tests, immutable or thread-safe -----------------------------------------------
 
-    /** The contract check outermost: it sees the response after the report attached it, and fails the call. */
+    /** The SUT's OpenAPI file, read once: asserted by the contract tests, reported for every other call (ADR 0015). */
     @Bean
-    ApiTransport apiTransport(SutEnvironment environment, ProjectProperties properties) {
+    Contract contract() {
+        return Contract.fromClasspath(CONTRACT);
+    }
+
+    /**
+     * The contract check outermost: its step follows the exchange the report attached. It reports a violation as a
+     * broken step and never fails the call: the verdict on the contract is the contract tests' (ADR 0015).
+     */
+    @Bean
+    ApiTransport apiTransport(SutEnvironment environment, ProjectProperties properties, Contract contract) {
         return new ApiTransport(new ApiSettings(environment.sutUrl(), properties.api().timeout()),
-                List.of(ContractFilter.fromClasspath(CONTRACT), ApiReport.exchanges()));
+                List.of(new ContractFilter(contract, new ContractReport()), ApiReport.exchanges()));
+    }
+
+    @Bean
+    SutHealth sutHealth(ApiTransport transport) {
+        return new SutHealth(transport);
     }
 
     @Bean

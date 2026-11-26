@@ -23,6 +23,12 @@ public final class Groups {
     /** API tests: the SUT through its REST API, checked against the database. */
     public static final String API = "api";
 
+    /**
+     * Contract tests: one response of the SUT per test, checked against {@code openapi.yaml} and nothing else (ADR
+     * 0015). The functional kinds do not fail on the contract.
+     */
+    public static final String CONTRACT = "contract";
+
     /** UI tests: the users page in a browser (project.ui.profile), one leased browser per test. */
     public static final String UI = "ui";
 
@@ -44,7 +50,7 @@ public final class Groups {
     public static final String ISOLATED = "isolated";
 
     /** Every kind, in the order of the JUnit twin's annotations. */
-    public static final List<String> KINDS = List.of(API, UI, E2E, EVENTS);
+    public static final List<String> KINDS = List.of(API, CONTRACT, UI, E2E, EVENTS);
 
     private Groups() {
     }

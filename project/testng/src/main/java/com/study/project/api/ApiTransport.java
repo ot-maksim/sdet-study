@@ -25,7 +25,7 @@ import java.util.function.Function;
  * path is followed by regenerating, a renamed operation or parameter is a compile error in {@code UserApi}, not a
  * 404 at night. What it does not give, and this class adds: one
  * {@link ApiResponse} with the request and the response for every call, failures that explain themselves, and the
- * contract check of every response ({@link ContractFilter}).
+ * contract check of every response ({@link ContractFilter}: reported, not failed).
  *
  * <pre>{@code
  * ApiResponse response = transport.send(api -> api.users().getUser().idPath(7));
@@ -52,8 +52,8 @@ public final class ApiTransport {
 
     /**
      * Sends one generated operation and returns the exchange whatever the status: a status is the caller's
-     * decision ({@link ApiResponse#expect}). Fails only when there is no exchange to look at (the SUT is not
-     * reachable) or the response breaks the contract. Any other failure (a bug in {@code operation}, a body that
+     * decision ({@link ApiResponse#expect}), and so is the contract (a filter reports it, the contract tests
+     * assert it: ADR 0015). Fails only when there is no exchange to look at (the SUT is not reachable). Any other failure (a bug in {@code operation}, a body that
      * cannot be serialized) is thrown as it is: it is not the environment's fault and must not be reported as such.
      */
     public ApiResponse send(Function<ApiClient, ? extends Oper> operation) {
@@ -62,9 +62,6 @@ public final class ApiTransport {
         Oper call = operation.apply(client);   // the caller's code, outside the try: its failures stay its own
         try {
             call.execute(response -> response);
-        } catch (ContractFilter.Violation violation) {
-            throw new ApiException("The response breaks the SUT's contract (openapi.yaml):\n"
-                    + violation.getMessage() + "\n" + exchange.response(), violation);
         } catch (Exception e) {
             // RestAssured rethrows checked IOExceptions (ConnectException, SocketTimeoutException) undeclared, so
             // they cannot be caught by type. The try declares no checked exception: anything else is unchecked and

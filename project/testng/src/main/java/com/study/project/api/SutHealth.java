@@ -11,6 +11,11 @@ public final class SutHealth {
 
     /** Throws {@link ApiException} with the exchange unless the SUT answers 200. */
     public void expectUp() {
-        api.send(client -> client.health().health()).expect(200);
+        check().expect(200);
+    }
+
+    /** The answer whatever it is: for the contract tests. */
+    public ApiResponse check() {
+        return api.send(client -> client.health().health());
     }
 }

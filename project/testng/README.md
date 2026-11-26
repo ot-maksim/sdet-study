@@ -73,7 +73,7 @@ flowchart LR
 ```
 mvn -q -pl sut -am package -DskipTests                                # the SUT image is built from sut/target/sut.jar
 mvn -q -pl project/testng verify                                      # hermetic: needs only Docker (and Chromium)
-mvn -q -pl project/testng verify -Dgroups=api                         # one kind: api, ui, e2e, events
+mvn -q -pl project/testng verify -Dgroups=api                         # one kind: api, contract, ui, e2e, events
 mvn -q -pl project/testng verify -Dspring.profiles.active=mobile,db   # phone context, DB preconditions
 mvn -q -pl project/testng verify -Dspring.profiles.active=stand       # against docker compose (sut/README.md)
 mvn -q -pl project/testng test -Dtest='ArchitectureTest,ContractFilterTest'   # bypasses testng.xml

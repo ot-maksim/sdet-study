@@ -1,6 +1,7 @@
 # ADR 0013 — API client generated from the SUT's OpenAPI, wrapped by hand; every response checked against it
 
-Status: accepted (stage 5a, `project/junit`; the same in `project/testng`).
+Status: accepted (stage 5a, `project/junit`; the same in `project/testng`). What fails on a contract violation is
+superseded by [ADR 0015](0015-contract-tests-apart.md): the filter reports, separate contract tests decide.
 
 ## Context
 
@@ -32,7 +33,8 @@ Two separate questions:
 - **Every response is checked against the same file** (`ContractFilter`, Atlassian
   `swagger-request-validator`): declared status, body schema (required fields, types, formats, the enum of error
   codes), required headers. A violation fails the call with the validator's report and the exchange (the request
-  and the response: method, URL, status, bodies).
+  and the response: method, URL, status, bodies). *Superseded by [ADR 0015](0015-contract-tests-apart.md): the
+  filter only reports (a broken step); `UsersContractTest` fails, one test per response of the contract.*
   **Requests are not checked**: negative tests send what the contract forbids (age 17, a missing field) on purpose.
 - The build copies the file next to the classes (`contract/openapi.yaml`): the generator and the validator read
   one source, so they cannot disagree.

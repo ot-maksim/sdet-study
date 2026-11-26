@@ -34,8 +34,22 @@ public final class UserApi {
         return api.send(client -> client.users().createUser().body(toModel(user)));
     }
 
+    /** A body the client would never build ({@code {"name":}}): the SUT's answer to malformed JSON. */
+    public ApiResponse tryCreate(String rawJson) {
+        return api.send(client -> client.users().createUser().reqSpec(spec -> spec.setBody(rawJson)));
+    }
+
     public User get(long id) {
-        return toUser(api.send(client -> client.users().getUser().idPath(id)).expect(200));
+        return toUser(tryGet(id).expect(200));
+    }
+
+    public ApiResponse tryGet(long id) {
+        return tryGet(String.valueOf(id));
+    }
+
+    /** The id as written in the path, also one that is not a number ({@code abc}). */
+    public ApiResponse tryGet(String id) {
+        return api.send(client -> client.users().getUser().idPath(id));
     }
 
     /**
@@ -43,7 +57,7 @@ public final class UserApi {
      * a proxy page — is an error, not "absent".
      */
     public Optional<User> find(long id) {
-        ApiResponse response = api.send(client -> client.users().getUser().idPath(id));
+        ApiResponse response = tryGet(id);
         if (response.isError(404, "user_not_found")) {
             return Optional.empty();
         }
@@ -51,24 +65,41 @@ public final class UserApi {
     }
 
     public Optional<User> findByEmail(String email) {
-        List<User> found = toUsers(api.send(client -> client.users().listUsers().emailQuery(email)).expect(200));
+        List<User> found = toUsers(tryFindByEmail(email).expect(200));
         if (found.size() > 1) {
             throw new ApiException("Email must be unique, found " + found.size() + " users for " + email + ": " + found);
         }
         return found.stream().findFirst();
     }
 
+    public ApiResponse tryFindByEmail(String email) {
+        return api.send(client -> client.users().listUsers().emailQuery(email));
+    }
+
     public List<User> all() {
-        return toUsers(api.send(client -> client.users().listUsers()).expect(200));
+        return toUsers(tryAll().expect(200));
+    }
+
+    public ApiResponse tryAll() {
+        return api.send(client -> client.users().listUsers());
     }
 
     public void delete(long id) {
-        api.send(client -> client.users().deleteUser().idPath(id)).expect(204);
+        tryDelete(id).expect(204);
+    }
+
+    public ApiResponse tryDelete(long id) {
+        return tryDelete(String.valueOf(id));
+    }
+
+    /** The id as written in the path, also one that is not a number ({@code abc}). */
+    public ApiResponse tryDelete(String id) {
+        return api.send(client -> client.users().deleteUser().idPath(id));
     }
 
     /** Idempotent, for cleanup: a user the test already deleted is not a cleanup failure. */
     public boolean deleteIfExists(long id) {
-        ApiResponse response = api.send(client -> client.users().deleteUser().idPath(id));
+        ApiResponse response = tryDelete(id);
         if (response.isError(404, "user_not_found")) {
             return false;
         }
